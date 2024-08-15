@@ -1,9 +1,9 @@
-program brenan
+program weissinger
     implicit none
 
     integer neqn, nlj, nuj, nlm, num
     logical jnum, mnum
-    parameter (neqn=2, nlj=neqn, nuj=neqn, nlm=neqn, num=neqn)
+    parameter (neqn=1, nlj=neqn, nuj=neqn, nlm=neqn, num=neqn)
     parameter (jnum=.true., mnum=.true.)
     integer lrwork, liwork
     parameter (lrwork=20+27*neqn+6*neqn**2, liwork=20+4*neqn)
@@ -21,16 +21,14 @@ program brenan
     end do
     
     ! consistent initial values
-    t = 0.0
-    tend = 1000.0
-    y(1) = 1.0
-    y(2) = 0.0
-    yp(1) = -1.0
-    yp(2) = 1.0
+    t = sqrt(0.5)
+    tend = 10
+    y(1) = sqrt(t**2 + 0.5)
+    yp(1) = t / sqrt(t**2 + 0.5)
     
     ! set scalar tolerances
-    rtol = 1e-8
-    atol = 1e-8
+    rtol = 1e-6
+    atol = 1e-6
     
     write(*, '(1X,A,/)') "PSIDE example solving Brenan's index 1 problem"
     
@@ -42,10 +40,9 @@ program brenan
         rpar, ipar, idid)
 
     ! compute error with respect to true solution
-    diff(1) = y(1) - (exp(-t) + t * sin(t))
-    diff(2) = y(2) - sin(t)
-    error = sqrt(diff(1)**2 + diff(2)**2)
-    
+    diff(1) = y(1) - sqrt(t**2 + 0.5)
+    error = sqrt(diff(1)**2)
+
     if (idid.EQ.1) then
         write(*,'(1X,A,F7.1)') 'solution at t = ', tend
         write(*,*)
@@ -62,13 +59,12 @@ program brenan
         write(*,'(1X,A,I4)') 'PSIDE failed: idid =', idid
     endif
     
-end program brenan
+end program weissinger
     
 subroutine fun(neqn, t, y, yp, g, ierr, rpar, ipar)
     integer neqn, ierr, ipar(*)
     double precision t, y(neqn), yp(neqn), g(neqn), rpar(*)
-    g(1) = yp(1) - t * yp(2) + y(1) - (1.0 + t) * y(2)
-    g(2) = y(2) - sin(t)
+    g(1) = t * y(1)**2 * yp(1)**3 - y(1)**3 * yp(1)**2 + t * (t**2 + 1) * yp(1) - t**2 * y(1)
     return
 end
 
