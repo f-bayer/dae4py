@@ -8,8 +8,9 @@ program brenan
     integer lrwork, liwork
     parameter (lrwork=20+27*neqn+6*neqn**2, liwork=20+4*neqn)
     integer ind, iwork(liwork), ipar, idid
-    double precision y(neqn), yp(neqn), t, tend, rtol, atol, &
-                     rwork(lrwork),rpar
+    double precision y(neqn), yp(neqn), diff(neqn), error, &
+                     t, tend, rtol, atol, &
+                     rwork(lrwork), rpar
     external fun, J, M
     integer i
     
@@ -21,7 +22,7 @@ program brenan
     
     ! consistent initial values
     t = 0.0
-    tend = 100.0
+    tend = 1000.0
     y(1) = 1.0
     y(2) = 0.0
     yp(1) = -1.0
@@ -39,18 +40,26 @@ program brenan
         t, tend, rtol, atol, ind, &
         lrwork, rwork, liwork, iwork, &
         rpar, ipar, idid)
+
+    ! compute error with respect to true solution
+    diff(1) = y(1) - (exp(-t) + t * sin(t))
+    diff(2) = y(2) - sin(t)
+    error = sqrt(diff(1)**2 + diff(2)**2)
+
+    ! print *, "error: ", error
     
     if (idid.EQ.1) then
-        write(*,'(1X,A,F5.1)') 'solution at t = ', tend
+        write(*,'(1X,A,F7.1)') 'solution at t = ', tend
         write(*,*)
         do i=1,neqn
             write(*,'(4X,''y('',I1,'') ='',E11.3)') i, y(i)
         end do
         write(*,*)
-        write(*,'(1X,A,I4)') 'number of steps =', iwork(15)
-        write(*,'(1X,A,I4)') 'number of f-s =', iwork(11)
-        write(*,'(1X,A,I4)') 'number of J-s =', iwork(12)
-        write(*,'(1X,A,I4)') 'number of LU-s =', iwork(13)
+        write(*,'(1X,A,I6)') 'number of steps =', iwork(15)
+        write(*,'(1X,A,I6)') 'number of f-s =', iwork(11)
+        write(*,'(1X,A,I6)') 'number of J-s =', iwork(12)
+        write(*,'(1X,A,I6)') 'number of LU-s =', iwork(13)
+        write(*,'(1X,A,E15.5)') 'error = ', error
     else
         write(*,'(1X,A,I4)') 'PSIDE failed: idid =', idid
     endif
