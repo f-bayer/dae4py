@@ -1,0 +1,14 @@
+[build-system]
+build-backend = 'mesonpy'
+requires = ['meson-python']
+
+[project]
+name = 'pside4py'
+version = '0.0.1'
+description = 'Python wrapper of PSIDE DAE/IDE solver.'
+readme = 'README.md'
+requires-python = '>=3.8'
+license = {file = 'LICENSE.txt'}
+authors = [
+  {name = 'Jonas Breuling', email = 'jonas.breuling@inm.uni-stuttgart.de'},
+]
