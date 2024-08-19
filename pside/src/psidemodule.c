@@ -61,11 +61,9 @@ void PSIDE(F_INT *neq, double *y, double *yp, pside_f_t *f,
            F_INT *jnum /*should be boolean*/, F_INT *nlj, F_INT *nuj, pside_J_t *J, 
            F_INT *mnum /*should be boolean*/, F_INT *nlm, F_INT *num, pside_M_t *M, 
            double *t, double *tend, double *rtol, double *atol, F_INT *IND,
-           F_INT *lrwork, double *rwork, F_INT liwork, F_INT *iwork, 
+           F_INT *lrwork, double *rwork, F_INT *liwork, F_INT *iwork, 
            double *rpar, F_INT *ipar, F_INT *idid);
 
-
-// C          SUBROUTINE GEVAL(NEQN,T,Y,DY,G,IERR,RPAR,IPAR)
 void pside_f(F_INT *neqn, double *t, double *y, double *yp, double *f, F_INT *ierr, double *rpar, F_INT *ipar)
 {
     PyObject *y_object = NULL;
@@ -131,15 +129,13 @@ void pside_f(F_INT *neqn, double *t, double *y, double *yp, double *f, F_INT *ie
 }
 
 
-void pside_J(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, double *t, double *y, double *ydot, double *J, double *rpar, F_INT *ipar)
-{
+void pside_J(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, 
+             double *t, double *y, double *ydot, double *J, 
+             double *rpar, F_INT *ipar){}
 
-}
-
-void pside_M(F_INT lmj, F_INT neqn, F_INT nlm, F_INT num, double *t, double *y, double *ydot, double *M, double *rpar, F_INT *ipar)
-{
-
-}
+void pside_M(F_INT lmj, F_INT neqn, F_INT nlm, F_INT num, 
+             double *t, double *y, double *ydot, double *M, 
+             double *rpar, F_INT *ipar){}
 
 
 PyDoc_STRVAR(pside_integrate_doc,
@@ -163,12 +159,16 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *t_span_obj = NULL;
     PyObject *y0_obj = NULL;
     PyObject *yp0_obj = NULL;
+    PyObject *y_sol_obj = NULL;
+    PyObject *yp_sol_obj = NULL;
+    PyObject *t_eval_obj = Py_None;
     double rtol = 1.0e-3;
     double atol = 1.0e-6;
     double t0, t1, t;
-    double *y, *yp;
+    double *y, *yp, *t_eval;
 
     int neqn;
+    int nt;
     int jnum = 1; 
     int mnum = 1; 
 
@@ -182,35 +182,31 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
     int *ipar;
     int idid;
 
+    npy_intp dims[2];
+
     PyArrayObject *y_array = NULL;
     PyArrayObject *yp_array = NULL;
+    PyArrayObject *t_eval_array = NULL;
+    PyArrayObject *y_sol_array = NULL;
+    PyArrayObject *yp_sol_array = NULL;
 
     // parse inputs
     static char *kwlist[] = {"f", "t_span", "y0", "yp0", // mandatory arguments
-                             "rtol", "atol", NULL}; // optional arguments and NULL termination
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|dd", kwlist, 
+                             "rtol", "atol", "t_eval", NULL}; // optional arguments and NULL termination
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddO", kwlist, 
                                      &f_obj, &t_span_obj, &y0_obj, &yp0_obj, // positional arguments
-                                     &rtol, &atol)) // optional arguments
+                                     &rtol, &atol, &t_eval_obj)) // optional arguments
         return NULL;
 
     if (!PyCallable_Check(f_obj)) {
         PyErr_SetString(PyExc_ValueError, "`f` must be a callable function.");
     }
 
-    // if (!PyTuple_Check(t_span_obj)) {
-    //     PyErr_SetString(PyExc_ValueError, "`t_span` must be a tuple.");
-    // }
-    // if (!(PyTuple_GET_SIZE(t_span_obj) == 2)) {
-    //     PyErr_SetString(PyExc_ValueError, "`t_span` must be a tuple of two elements.");
-    // }
     PyArg_ParseTuple(t_span_obj, "dd", &t0, &t1);
     if (!(t1 > t0)) {
         PyErr_SetString(PyExc_ValueError, "`t1` must larger than `t0`.");
     }
     t = t0;
-    // printf("t0: %e\n", t0);
-    // printf("t1: %e\n", t1);
-    // printf("t: %e\n", t);
 
     // initial conditions
     y_array = (PyArrayObject *) PyArray_ContiguousFromObject(y0_obj, NPY_DOUBLE, 0, 0);
@@ -224,7 +220,6 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     y = (double *) PyArray_DATA(y_array);
     neqn = PyArray_Size((PyObject *) y_array);
-    // printf("neqn: %i\n", neqn);
 
     yp_array = (PyArrayObject *) PyArray_ContiguousFromObject(yp0_obj, NPY_DOUBLE, 0, 0);
     if (yp_array == NULL) {
@@ -241,6 +236,44 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
         goto fail;
     }
 
+    if (t_eval_obj != Py_None) {
+        t_eval_array = (PyArrayObject *) PyArray_ContiguousFromObject(t_eval_obj, NPY_DOUBLE, 0, 0);
+        if (t_eval_array == NULL) {
+            PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(t_eval_obj, NPY_DOUBLE, 0, 0) failed");
+            goto fail;
+        }
+        if (PyArray_NDIM(t_eval_array) > 1) {
+            PyErr_SetString(PyExc_ValueError, "t_eval must be one-dimensional.");
+            goto fail;
+        }
+        t_eval = (double *) PyArray_DATA(t_eval_array);
+        nt = PyArray_Size((PyObject *) t_eval_array);
+
+        dims[0] = nt;
+        dims[1] = neqn;
+        y_sol_obj = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+        if (y_sol_obj == NULL) {
+            PyErr_SetString(PyExc_ValueError, "PyArray_SimpleNew(2, dims, NPY_DOUBLE) failed");
+            goto fail;
+        }
+        yp_sol_obj = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+        if (yp_sol_obj == NULL) {
+            PyErr_SetString(PyExc_ValueError, "PyArray_SimpleNew(2, dims, NPY_DOUBLE) failed");
+            goto fail;
+        }
+
+        y_sol_array = (PyArrayObject *) PyArray_ContiguousFromObject(y_sol_obj, NPY_DOUBLE, 0, 0);
+        if (y_sol_array == NULL) {
+            PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(y_sol_obj, NPY_DOUBLE, 0, 0) failed");
+            goto fail;
+        }
+        yp_sol_array = (PyArrayObject *) PyArray_ContiguousFromObject(yp_sol_obj, NPY_DOUBLE, 0, 0);
+        if (yp_sol_array == NULL) {
+            PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(yp_sol_obj, NPY_DOUBLE, 0, 0) failed");
+            goto fail;
+        }
+    }
+
     /* Initialize iwork and rwork. */
     lrwork = 20 + 27 * neqn + 6 * pow(neqn, 2);
     liwork = 20 + 4 * neqn;
@@ -255,14 +288,35 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
     /* Set global_params from the function arguments. */
     global_params.python_function = f_obj;
 
-    // printf("before PSIDE call\n");
-    PSIDE(&neqn, y, yp, pside_f, 
-        &jnum, &neqn, &neqn, pside_J, 
-        &mnum, &neqn, &neqn, pside_M, 
-        &t, &t1, &rtol, &atol, &IND,
-        &lrwork, rwork, &liwork, iwork, 
-        rpar, ipar, &idid);
-    // printf("after PSIDE call\n");
+    if (t_eval_obj == Py_None) {
+        PSIDE(&neqn, y, yp, pside_f, 
+              &jnum, &neqn, &neqn, pside_J, 
+              &mnum, &neqn, &neqn, pside_M, 
+              &t, &t1, &rtol, &atol, &IND,
+              &lrwork, rwork, &liwork, iwork, 
+              rpar, ipar, &idid);
+    } else {
+        // store initial data
+        int i = 0;
+        memcpy(PyArray_GETPTR2(y_sol_array, i, 0), y, PyArray_NBYTES(y_array));
+        memcpy(PyArray_GETPTR2(yp_sol_array, i, 0), yp, PyArray_NBYTES(yp_array));
+
+        // loop over all other steps
+        for (i=1; i<nt; i++) {
+            t1 = t_eval[i];
+
+            PSIDE(&neqn, y, yp, pside_f, 
+                &jnum, &neqn, &neqn, pside_J, 
+                &mnum, &neqn, &neqn, pside_M, 
+                &t, &t1, &rtol, &atol, &IND,
+                &lrwork, rwork, &liwork, iwork, 
+                rpar, ipar, &idid);
+
+            // store data in ith column of y_sol_array/ yp_sol_array
+            memcpy(PyArray_GETPTR2(y_sol_array, i, 0), y, PyArray_NBYTES(y_array));
+            memcpy(PyArray_GETPTR2(yp_sol_array, i, 0), yp, PyArray_NBYTES(yp_array));
+        }
+    }
 
     free(rwork);
     free(iwork);
@@ -272,12 +326,22 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_XDECREF(y0_obj);
     Py_XDECREF(yp0_obj);
 
-    return Py_BuildValue(
-        "{s:N,s:N,s:N}",
-        "success", Py_True,
-        "y", PyArray_Return(y_array),
-        "yp", PyArray_Return(yp_array)
-    );
+    if (t_eval_obj == Py_None) {
+        return Py_BuildValue(
+            "{s:N,s:N,s:N}",
+            "success", Py_True,
+            "y", PyArray_Return(y_array),
+            "yp", PyArray_Return(yp_array)
+        );
+    } else {
+        return Py_BuildValue(
+            "{s:N,s:N,s:N,s:N}",
+            "success", Py_True,
+            "t", PyArray_Return(t_eval_array),
+            "y", PyArray_Return(y_sol_array),
+            "yp", PyArray_Return(yp_sol_array)
+        );
+    }
 
     fail:
         Py_XDECREF(y_array);

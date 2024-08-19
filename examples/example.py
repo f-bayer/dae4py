@@ -21,8 +21,10 @@ def F(t, y, yp):
 if __name__ == "__main__":
     # time span
     t0 = 0
-    t1 = 1e3
+    t1 = 1e2
     t_span = (t0, t1)
+    t_eval = np.linspace(t0, t1, num=int(1e3))
+    # t_eval = None
 
     # tolerances
     rtol = atol = 9.8e-11
@@ -32,39 +34,34 @@ if __name__ == "__main__":
     yp0 = np.array([-1, 1], dtype=float)
 
     start = time.time()
-    sol = integrate(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    sol = integrate(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
     end = time.time()
     print(f"elapsed time: {end - start}")
 
     success = sol["success"]
+    t = sol["t"]
     y = sol["y"]
     yp = sol["yp"]
     assert success
 
     # error
-    diff = y - np.array([
+    diff = y[-1] - np.array([
         np.exp(-t1) + t1 * np.sin(t1),
         np.sin(t1),
     ])
     error = np.linalg.norm(diff)
     print(f"error: {error}")
 
-    # print(f"y: {y}")
-    # print(f"yp: {yp}")
+    # visualization
+    fig, ax = plt.subplots()
 
-    # t = sol.t
-    # y = sol.y
-    # tp = t
-    # yp = sol.yp
-    # success = sol.success
-    # status = sol.status
-    # message = sol.message
-    # print(f"success: {success}")
-    # print(f"status: {status}")
-    # print(f"message: {message}")
-    # print(f"nfev: {sol.nfev}")
-    # print(f"njev: {sol.njev}")
-    # print(f"nlu: {sol.nlu}")
-    # print(f"y[:, -1]: {y[:, -1]}")
+    ax.plot(t, y[:, 0], "--r", label="y1")
+    ax.plot(t, y[:, 1], "--g", label="y2")
 
-    # print(f"integrate(): {integrate()}")
+    ax.plot(t, np.exp(-t) + t * np.sin(t), "-r", label="y1 true")
+    ax.plot(t, np.sin(t), "-g", label="y2 true")
+
+    ax.grid()
+    ax.legend()
+
+    plt.show()
