@@ -1,12 +1,6 @@
 #include <Python.h>
-
-// #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
-
 #include "numpy/arrayobject.h"
-
-// remove this later
-#include <stdio.h>
 
 #ifdef HAVE_BLAS_ILP64
 #define F_INT npy_int64
@@ -18,11 +12,8 @@
 
 typedef struct _pside_globals {
     PyObject *python_function;
-    // npy_intp dims[1];
-    // int neqn;
 } pside_params;
 
-// static pside_params global_params = {NULL, {0}, 0};
 static pside_params global_params = {NULL};
 
 #if defined(UPPERCASE_FORTRAN)
@@ -40,23 +31,9 @@ static pside_params global_params = {NULL};
 #endif
 
 typedef void pside_f_t(F_INT *neqn, double *t, double *y, double *ydot, double *f, F_INT *ierr, double *rpar, F_INT *ipar);
-
 typedef void pside_J_t(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, double *t, double *y, double *ydot, double *J, double *rpar, F_INT *ipar);
 typedef void pside_M_t(F_INT lmj, F_INT neqn, F_INT nlm, F_INT num, double *t, double *y, double *ydot, double *M, double *rpar, F_INT *ipar);
 
-pside_J_t *J;
-pside_J_t *M;
-
-// C          SUBROUTINE GEVAL(NEQN,T,Y,DY,G,IERR,RPAR,IPAR)
-// C          SUBROUTINE JEVAL(LDJ,NEQN,NLJ,NUJ,T,Y,DY,DGDY,RPAR,IPAR)
-// C          SUBROUTINE MEVAL(LDM,NEQN,NLM,NUM,T,Y,DY,DGDDY,RPAR,IPAR)
-
-// SUBROUTINE PSIDE(NEQN,Y,DY,GEVAL,
-// +                 JNUM,NLJ,NUJ,JEVAL,
-// +                 MNUM,NLM,NUM,MEVAL,
-// +                 T,TEND,RTOL,ATOL,IND,
-// +                 LRWORK,RWORK,LIWORK,IWORK,RPAR,IPAR,
-// +                 IDID)
 void PSIDE(F_INT *neq, double *y, double *yp, pside_f_t *f, 
            F_INT *jnum /*should be boolean*/, F_INT *nlj, F_INT *nuj, pside_J_t *J, 
            F_INT *mnum /*should be boolean*/, F_INT *nlm, F_INT *num, pside_M_t *M, 
@@ -116,9 +93,6 @@ void pside_f(F_INT *neqn, double *t, double *y, double *yp, double *f, F_INT *ie
     /* Copy data from the result array to your C array */
     memcpy(f, PyArray_DATA(result_array), PyArray_NBYTES(result_array));
 
-    // printf("f[0]: %e\n", f[0]);
-    // printf("f[1]: %e\n", f[1]);
-
     fail:
         Py_XDECREF(y_object);
         Py_XDECREF(yp_object);
@@ -136,22 +110,6 @@ void pside_J(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj,
 void pside_M(F_INT lmj, F_INT neqn, F_INT nlm, F_INT num, 
              double *t, double *y, double *ydot, double *M, 
              double *rpar, F_INT *ipar){}
-
-
-PyDoc_STRVAR(pside_integrate_doc,
-"integrate(f, t_span, y0, y0p, rtol=1.0e-8, atol=1e-10, J=None, M=None)\n"
-"\n"
-"Solve an implicit dae problem of the form f(t, y, y') = 0.\n"
-"\n"
-"Parameters\n"
-"----------\n"
-"f : callable of the type res(t, y, yp), where\n"
-"    t is the current integration time,\n"
-"    y is the current state vector,\n"
-"    yp is the derivative of the current state vector.\n"
-"    It should return a vector f(t, y, yp) where f(t, y, yp).shape[0] == len(y) = len(yp).\n"
-"t_span : tuple storing integration time start and end.\n"
-);
 
 static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -350,7 +308,7 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 static PyMethodDef methods[] = {
-    {"integrate", (PyCFunction)integrate, METH_VARARGS | METH_KEYWORDS, pside_integrate_doc},
+    {"integrate", (PyCFunction)integrate, METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL},
 };
 
