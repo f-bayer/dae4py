@@ -22,9 +22,8 @@ if __name__ == "__main__":
     # time span
     t0 = 0
     t1 = 1e2
-    t_span = (t0, t1)
+    # t_eval = np.linspace(t0, t1, num=int(2))
     t_eval = np.linspace(t0, t1, num=int(1e3))
-    # t_eval = None
 
     # tolerances
     rtol = atol = 9.8e-11
@@ -34,9 +33,10 @@ if __name__ == "__main__":
     yp0 = np.array([-1, 1], dtype=float)
 
     start = time.time()
-    sol = integrate(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
+    sol = integrate(F, t_eval, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
     print(f"elapsed time: {end - start}")
+    print(sol)
 
     success = sol["success"]
     t = sol["t"]
