@@ -1,6 +1,6 @@
 # see https://numpy.org/doc/stable/f2py/buildtools/meson.html
 project(
-    'pside4py', 
+    'dae4py', 
     'c',
 )
 
@@ -19,4 +19,4 @@ lapack_dep = declare_dependency(
   compile_args: _args_blas_lapack
 )
 
-subdir('pside4py')
+subdir('dae4py')

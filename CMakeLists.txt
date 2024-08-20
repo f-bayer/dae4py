@@ -21,10 +21,10 @@ endif()
 # set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${FVERSION}")
 
 # define pside library
-set(PSIDE_MODS pside4py/src/pside/pside.f
-        #        pside4py/src/pside/psided.f
-        #        pside4py/src/pside/psidea.f
-        #        pside4py/src/pside/report.f
+set(PSIDE_MODS dae4py/src/pside/pside.f
+        #        dae4py/src/pside/psided.f
+        #        dae4py/src/pside/psidea.f
+        #        dae4py/src/pside/report.f
                CACHE INTERNAL "")
 add_library(pside_lib "${PSIDE_MODS}")
 target_link_libraries(pside_lib ${LAPACKBLAS_LIBRARIES})
