@@ -5,10 +5,6 @@ from _psidemodule import integrate
 
 
 def F(t, y, yp):
-    # print(f"F(t, y, yp) called with:")
-    # print(f" - t: {t}")
-    # print(f" - y: {y}")
-    # print(f" - yp: {yp}")
     y1, y2 = y
     y1p, y2p = yp
 
@@ -21,12 +17,12 @@ def F(t, y, yp):
 if __name__ == "__main__":
     # time span
     t0 = 0
-    # t1 = 1e2
-    t1 = 1e1
+    t1 = 1e2
     t_span = (t0, t1)
 
     # tolerances
-    rtol = atol = 9.8e-11
+    # rtol = atol = 9.8e-11
+    rtol = atol = 1e-8
 
     # initial conditions
     y0 = np.array([1, 0], dtype=float)
@@ -44,6 +40,11 @@ if __name__ == "__main__":
     yp = sol["yp"]
     assert success
 
+    print(f"t.shape: {t.shape}")
+    print(f"y.shape: {y.shape}")
+    print(f"yp.shape: {yp.shape}")
+    # exit()
+
     # error
     diff = y[-1] - np.array([
         np.exp(-t1) + t1 * np.sin(t1),
@@ -51,14 +52,6 @@ if __name__ == "__main__":
     ])
     error = np.linalg.norm(diff)
     print(f"error: {error}")
-
-    y = y.reshape(-1, 2)
-    yp = yp.reshape(-1, 2)
-
-    print(f"t: {t}")
-    print(f"y:\n{y}")
-    print(f"yp:\n{yp}")
-    # exit()
 
     # visualization
     fig, ax = plt.subplots()
