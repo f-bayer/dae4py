@@ -21,9 +21,9 @@ def F(t, y, yp):
 if __name__ == "__main__":
     # time span
     t0 = 0
-    t1 = 1e2
-    # t_eval = np.linspace(t0, t1, num=int(2))
-    t_eval = np.linspace(t0, t1, num=int(1e3))
+    # t1 = 1e2
+    t1 = 1e1
+    t_span = (t0, t1)
 
     # tolerances
     rtol = atol = 9.8e-11
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     yp0 = np.array([-1, 1], dtype=float)
 
     start = time.time()
-    sol = integrate(F, t_eval, y0, yp0, rtol=rtol, atol=atol)
+    sol = integrate(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
     print(f"elapsed time: {end - start}")
     print(sol)
@@ -52,11 +52,19 @@ if __name__ == "__main__":
     error = np.linalg.norm(diff)
     print(f"error: {error}")
 
+    y = y.reshape(-1, 2)
+    yp = yp.reshape(-1, 2)
+
+    print(f"t: {t}")
+    print(f"y:\n{y}")
+    print(f"yp:\n{yp}")
+    # exit()
+
     # visualization
     fig, ax = plt.subplots()
 
-    ax.plot(t, y[:, 0], "--r", label="y1")
-    ax.plot(t, y[:, 1], "--g", label="y2")
+    ax.plot(t, y[:, 0], "--or", label="y1")
+    ax.plot(t, y[:, 1], "--og", label="y2")
 
     ax.plot(t, np.exp(-t) + t * np.sin(t), "-r", label="y1 true")
     ax.plot(t, np.sin(t), "-g", label="y2 true")

@@ -4,14 +4,14 @@ C$Id: pside.f,v 1.23 1998/11/25 09:30:17 walter Exp $
      +                 MNUM,NLM,NUM,MEVAL,
      +                 T,TEND,RTOL,ATOL,IND,
      +                 LRWORK,RWORK,LIWORK,IWORK,RPAR,IPAR,
-     +                 IDID)
+     +                 IDID,SOLOUT)
 CF90  IMPLICIT NONE
       INTEGER NEQN,NLJ,NUJ,NLM,NUM,IND(*),LRWORK,LIWORK,
      +                 IWORK(LIWORK),IPAR(*),IDID
       DOUBLE PRECISION Y(NEQN),DY(NEQN),T,TEND,RTOL(*),ATOL(*),
      +                 RWORK(LRWORK),RPAR(*)
       LOGICAL JNUM,MNUM
-      EXTERNAL GEVAL,JEVAL,MEVAL
+      EXTERNAL GEVAL,JEVAL,MEVAL,SOLOUT
 CF90  INTENT(IN)    NEQN,JNUM,NLJ,NUJ,MNUM,NLM,NUM,TEND,RTOL,ATOL,IND,
 CF90 +              LRWORK,LIWORK
 CF90  INTENT(INOUT) Y,DY,T,RWORK,IWORK,RPAR,IPAR
@@ -774,7 +774,7 @@ C                    + NEQN*S
      +            RWORK(RYS),RWORK(RDYS),RWORK(RDYSP),RWORK(RDECLU),
      +            IWORK(IIPVTS),RWORK(RDGDY),RWORK(RDGDDY),
      +            RWORK(RAUX),RWORK(RAUX2),RWORK(RAUX3),
-     +            RWORK(RAUXS),RWORK(RAUXS2),RWORK(RAUXS3),IDID)
+     +            RWORK(RAUXS),RWORK(RAUXS2),RWORK(RAUXS3),IDID,SOLOUT)
 
       IWORK(10) = IWORK(10)+1
       IWORK(11) = NF
@@ -801,7 +801,7 @@ C$Id: tsteps.f,v 1.14 1998/11/25 08:58:34 walter Exp $
      +                  NLU,
      +                  YS,DYS,DYSP,DECLUS,IPVTS,DGDY,DGDDY,AUX,AUX2,
      +                  AUX3,
-     +                  AUXS,AUXS2,AUXS3,IDID)
+     +                  AUXS,AUXS2,AUXS3,IDID,SOLOUT)
 CF90  IMPLICIT NONE
 C begin included $Id: s.h,v 1.3 1997/11/25 17:11:51 walter Rel $
       INTEGER S
@@ -819,7 +819,7 @@ C end included $Id: s.h,v 1.3 1997/11/25 17:11:51 walter Rel $
      +                 AUXS(NEQN,S),AUXS2(NEQN,S),
      +                 AUXS3(NEQN,S)
       LOGICAL JNUM,MNUM,JBND,MBND,TOLVEC,INDGT1
-      EXTERNAL GEVAL,JEVAL,MEVAL
+      EXTERNAL GEVAL,JEVAL,MEVAL,SOLOUT
 CF90  INTENT(IN)    LDJ,LDM,LDLU,NEQN,TEND,JNUM,JBND,NLJ,
 CF90 +              NUJ,MNUM,MBND,NLM,NUM,TOLVEC,RTOL,ATOL,INDGT1,IND,
 CF90 +              UROUND
@@ -867,6 +867,7 @@ C-----------------------------------------------------------------------
      +             FIRST,JACNEW,FACNEW,JACU2D,IDID)
          IF (IDID.NE.1) GOTO 40
          NST = NST + 1
+         call SOLOUT(NST,NEQN,T,Y,DY)
          GOTO 30
       ENDIF
    40 RETURN
