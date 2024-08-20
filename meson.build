@@ -19,4 +19,4 @@ lapack_dep = declare_dependency(
   compile_args: _args_blas_lapack
 )
 
-subdir('pside')
+subdir('pside4py')

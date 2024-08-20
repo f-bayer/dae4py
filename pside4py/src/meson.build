@@ -1,7 +1,7 @@
 py.extension_module(
     '_psidemodule',
     'psidemodule.c',
-    'pside.f',
+    'pside/pside.f',
     install: true,
     dependencies: [lapack_dep],
 )
