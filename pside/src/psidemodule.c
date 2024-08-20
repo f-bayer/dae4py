@@ -303,13 +303,13 @@ static PyMethodDef methods[] = {
 
 static struct PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
-    "psidemodule",
+    "_psidemodule",
     NULL,
     -1,
     methods,
 };
 
-PyMODINIT_FUNC PyInit_psidemodule(void)
+PyMODINIT_FUNC PyInit__psidemodule(void)
 {
     import_array();
     return PyModule_Create(&module);

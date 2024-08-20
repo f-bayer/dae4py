@@ -1,5 +1,5 @@
 py.extension_module(
-    'psidemodule',
+    '_psidemodule',
     'psidemodule.c',
     'pside.f',
     install: true,
