@@ -120,7 +120,9 @@ void pside_solout(F_INT *iter, F_INT *neqn, double *t, double *y, double *yp)
 {
     global_params.nt += 1;
 
-    PyList_Append(global_params.t_sol, PyFloat_FromDouble(*t));
+    PyObject *t_value = PyFloat_FromDouble(*t);
+    PyList_Append(global_params.t_sol, t_value);
+    Py_DECREF(t_value);
 
     npy_intp dims[1] = {*neqn};
     PyObject *y_array = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, y);
@@ -297,10 +299,6 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
                                 NPY_ARRAY_DEFAULT,      // Flags
                                 NULL)                   // Array description (NULL means default)
                             ),
-        // "y", PyArray_Return(PyArray_Concatenate(global_params.y_sol, 0)),
-        // "yp", PyArray_Return(PyArray_Concatenate(global_params.yp_sol, 0)),
-        // "yp", PyArray_Return(PyArray_ConcatenateInto(global_params.yp_sol, 0, NULL, NULL, NPY_UNSAFE_CASTING)),
-        // "yp", PyArray_Return(PyArray_Reshape((PyArrayObject *)PyArray_Concatenate(global_params.yp_sol, 0), dims_y)),
         "ncalls", iwork[9], // IWORK(10) number of successive PSIDE calls
         "nf", iwork[10], // IWORK(11) number of function evaluations
         "njac", iwork[11], // IWORK(12) number of jacobian evaluations
@@ -313,6 +311,8 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
     );
 
     fail:
+        free(rwork);
+        free(iwork);
         Py_XDECREF(f_obj);
         Py_XDECREF(t_span_obj);
         Py_XDECREF(y0_obj);
@@ -322,8 +322,55 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
 }
 
+PyDoc_STRVAR(integrate_doc,
+"integrate(f, t_span, y0, yp0)\n"
+"\n"
+"Solve an ODE system using a user-defined derivative function.\n"
+"\n"
+"Parameters\n"
+"----------\n"
+"f : callable\n"
+"    A Python function that computes the derivatives of the system.\n"
+"    The function must have the signature `f(t, y, yp)`, where `t` is the\n"
+"    current time, `y` is the state vector, and `yp` is the derivative of the state vector.\n"
+"\n"
+"t_span : array-like\n"
+"    A 2-element list or array defining the time interval `[t_start, t_end]`\n"
+"    over which to integrate the system.\n"
+"\n"
+"y0 : array-like\n"
+"    The initial conditions for the state vector `y` at the start of the integration.\n"
+"\n"
+"yp0 : array-like\n"
+"    The initial conditions for the derivative of the state vector `yp` at the start of the integration.\n"
+"\n"
+"Returns\n"
+"-------\n"
+"result : dict\n"
+"    A dictionary containing the results of the integration. The dictionary has the following keys:\n"
+"    - 't_sol': A list of time points at which the solution was recorded.\n"
+"    - 'y_sol': A list of state vectors corresponding to each time point.\n"
+"    - 'yp_sol': A list of derivative vectors corresponding to each time point.\n"
+"\n"
+"Raises\n"
+"------\n"
+"RuntimeError\n"
+"    If the integration fails due to an invalid function call or memory error.\n"
+"\n"
+"Examples\n"
+"--------\n"
+">>> def rhs(t, y, yp):\n"
+">>>     # Example: A simple harmonic oscillator\n"
+">>>     yp[0] = y[1]\n"
+">>>     yp[1] = -y[0]\n"
+">>>     return 0\n"
+">>> result = integrate(rhs, [0, 10], [1.0, 0.0], [0.0, -1.0])\n"
+">>> print(result['t_sol'])\n"
+">>> print(result['y_sol'])\n"
+);
+
 static PyMethodDef methods[] = {
-    {"integrate", (PyCFunction)integrate, METH_VARARGS | METH_KEYWORDS, NULL},
+    {"integrate", (PyCFunction)integrate, METH_VARARGS | METH_KEYWORDS, integrate_doc},
     {NULL, NULL, 0, NULL},
 };
 
