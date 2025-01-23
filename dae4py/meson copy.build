@@ -1,7 +1,11 @@
 py.extension_module(
-    '_psidemodule',
+    'pside',
     'psidemodule.c',
     'pside/pside.f',
     install: true,
     dependencies: [lapack_dep],
+    subdir: 'dae4py'
 )
+
+
+subdir('dae4py')

@@ -1,1 +1,1 @@
-subdir('src')
+subdir('pside')

@@ -3,9 +3,9 @@ build-backend = 'mesonpy'
 requires = ['meson-python']
 
 [project]
-name = 'pside4py'
+name = 'dae4py'
 version = '0.0.1'
-description = 'Python wrapper of PSIDE DAE/IDE solver.'
+description = 'Python wrapper of DAE/IDE fotran solver.'
 readme = 'README.md'
 requires-python = '>=3.8'
 license = {file = 'LICENSE.txt'}

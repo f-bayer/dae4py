@@ -35,12 +35,12 @@ static pside_params global_params = {NULL, NULL, NULL, NULL, 0};
 #endif
 
 typedef void pside_f_t(F_INT *neqn, double *t, double *y, double *ydot, double *f, F_INT *ierr, double *rpar, F_INT *ipar);
-typedef void pside_J_t(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, double *t, double *y, double *ydot, double *J, double *rpar, F_INT *ipar);
+typedef void pside_jac_t(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, double *t, double *y, double *ydot, double *J, double *rpar, F_INT *ipar);
 typedef void pside_M_t(F_INT lmj, F_INT neqn, F_INT nlm, F_INT num, double *t, double *y, double *ydot, double *M, double *rpar, F_INT *ipar);
 typedef void pside_solout_t(F_INT *iter, F_INT *neqn, double *t, double *y, double *ydot);
 
 void PSIDE(F_INT *neq, double *y, double *yp, pside_f_t *f, 
-           F_INT *jnum /*should be boolean*/, F_INT *nlj, F_INT *nuj, pside_J_t *J, 
+           F_INT *jnum /*should be boolean*/, F_INT *nlj, F_INT *nuj, pside_jac_t *J, 
            F_INT *mnum /*should be boolean*/, F_INT *nlm, F_INT *num, pside_M_t *M, 
            double *t, double *tend, double *rtol, double *atol, F_INT *IND,
            F_INT *lrwork, double *rwork, F_INT *liwork, F_INT *iwork, 
@@ -376,13 +376,13 @@ static PyMethodDef methods[] = {
 
 static struct PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
-    "_psidemodule",
+    "pside",
     NULL,
     -1,
     methods,
 };
 
-PyMODINIT_FUNC PyInit__psidemodule(void)
+PyMODINIT_FUNC PyInit_pside(void)
 {
     import_array();
     return PyModule_Create(&module);
