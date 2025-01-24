@@ -1,7 +1,8 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from dae4py.pside import integrate
+# from dae4py.pside import integrate
+from dae4py.dassl import integrate
 
 
 def F(t, y, yp):

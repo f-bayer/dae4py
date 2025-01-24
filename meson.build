@@ -10,12 +10,12 @@ py_mod = import('python')
 py = py_mod.find_installation(pure: false)
 py_dep = py.dependency()
 
-blas = dependency('blas')
-lapack = dependency('lapack')
+blas = dependency('blas', required: true)
+lapack = dependency('lapack', required: true)
 
 _args_blas_lapack = []
 lapack_dep = declare_dependency(
-  dependencies: lapack,
+  dependencies: [blas, lapack],
   compile_args: _args_blas_lapack
 )
 
