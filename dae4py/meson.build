@@ -6,8 +6,6 @@ dassl_src = [
 pside_src = [
     'pside/pside.h',
     'pside/src/pside.f',
-    # 'pside/src/psided.f',
-    # 'pside/src/psidea.f',
 ]
 
 py.extension_module(
@@ -17,5 +15,4 @@ py.extension_module(
     pside_src,
     install: true,
     dependencies: [lapack_dep],
-    # subdir: 'dae4py'
 )
