@@ -1,8 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-# from dae4py.pside import integrate
-from dae4py.dassl import integrate
+from dae4py import dassl, pside
 
 
 def F(t, y, yp):
@@ -31,7 +30,8 @@ if __name__ == "__main__":
     yp0 = np.array([-1, 1], dtype=float)
 
     start = time.time()
-    sol = integrate(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    # sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
     print(f"elapsed time: {end - start}")
     print(sol)
