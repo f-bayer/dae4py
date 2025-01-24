@@ -1,7 +1,8 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from _psidemodule import integrate
+# from dae4py.pside import integrate
+from dae4py.dassl import integrate
 
 
 def smoothstep2(x, x_min=0, x_max=1):
@@ -170,12 +171,6 @@ def f(t, vy):
 if __name__ == "__main__":
     # time span
     t_span = (t0, t1)
-    t_eval = np.linspace(t0, t1, num=int(1e4))
-    t_eval = None
-
-    # method = "BDF"
-    method = "Radau"
-    # method = "RK23"
 
     # initial positions
     q0 = np.array([length, 0, 0], dtype=float)
@@ -197,7 +192,8 @@ if __name__ == "__main__":
     print(f"F0: {F0}")
 
     # solver options
-    atol = rtol = 1e-5
+    atol = 1e-3
+    rtol = 1e-6
 
     ##############
     # dae solution
