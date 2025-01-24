@@ -261,9 +261,6 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
         PyList_Append(yp_sol, PyArray_NewCopy(yp_array, NPY_ANYORDER));
     }
 
-    // // debug idid
-    // printf("idid: %d\n", idid);
-
     // cleanup
     free(rwork);
     free(iwork);
@@ -276,7 +273,7 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_XDECREF(yp_array);
     
     return Py_BuildValue(
-        "{s:N,s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i}",
+        "{s:N,s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
         "success", success ? Py_True : Py_False,
         "order", PyArray_Return(PyArray_FromAny(
                                 order_sol,              // Input object
@@ -310,15 +307,11 @@ static PyObject* integrate(PyObject *self, PyObject *args, PyObject *kwargs)
                                 NPY_ARRAY_DEFAULT,      // Flags
                                 NULL)                   // Array description (NULL means default)
                             ),
-        "ncalls", iwork[9], // IWORK(10) number of successive PSIDE calls
-        "nf", iwork[10], // IWORK(11) number of function evaluations
-        "njac", iwork[11], // IWORK(12) number of jacobian evaluations
-        "nlu", iwork[12], // IWORK(13) number of LU-decompositions
-        "nsolve", iwork[13], // IWORK(14) number of forward/backward solves
-        "nsteps", iwork[14], // IWORK(15) total number of steps
-        "nrejerror", iwork[15], // IWORK(16) rejected steps due to error control
-        "nrejnewton", iwork[16], // IWORK(17) rejected steps due to Newton failure
-        "nrejgroth", iwork[17] // IWORK(18) rejected steps due to excessive growth of solution
+        "nsteps", iwork[10], // IWORK(11) total number of steps
+        "nf", iwork[11], // IWORK(12) number of function evaluations
+        "njac", iwork[12], // IWORK(13) number of jacobian evaluations
+        "nrejerror", iwork[13], // IWORK(14) total number of error test failures
+        "nrejnewton", iwork[14] // IWORK(15) total number of convergence test failures
     );
 
     fail:

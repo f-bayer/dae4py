@@ -23,7 +23,8 @@ if __name__ == "__main__":
 
     # tolerances
     # rtol = atol = 9.8e-11
-    rtol = atol = 1e-8
+    # rtol = atol = 1e-8
+    rtol = atol = 1e-6
 
     # initial conditions
     y0 = np.array([1, 0], dtype=float)
