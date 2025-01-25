@@ -3,6 +3,13 @@ dassl_src = [
     'dassl/src/ddassl.f',
 ]
 
+radau_src = [
+    'radau/radau.h',
+    'radau/src/radau.f',
+    'radau/src/decsol.f',
+    'radau/src/dc_decsol.f',
+]
+
 pside_src = [
     'pside/pside.h',
     'pside/src/pside.f',

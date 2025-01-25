@@ -10,44 +10,62 @@
 #define F_INT_NPY NPY_INT
 #endif
 
-typedef struct _dassl_globals {
+typedef struct _radau_globals {
     PyObject *python_function;
     int neqn;
-} dassl_params;
+} radau_params;
 
-static dassl_params global_dassl_params = {NULL, 0};
+static radau_params global_radau_params = {NULL, 0};
 
 #if defined(UPPERCASE_FORTRAN)
     #if defined(NO_APPEND_FORTRAN)
         /* nothing to do here */
     #else
-        #define DDASSL  DDASSL_
+        #define RADAU  RADAU_
     #endif
 #else
     #if defined(NO_APPEND_FORTRAN)
-        #define DDASSL  ddassl
+        #define RADAU  radau
     #else
-        #define DDASSL  ddassl_
+        #define RADAU  radau_
     #endif
 #endif
 
-typedef void radau_f_t(double *t, double *y, double *ydot, 
-                         double *f, F_INT *ires, 
-                         double *rpar, F_INT *ipar);
+typedef void radau_f_t(F_INT *neq, double *t, double *y, 
+                       double *f, double *rpar, F_INT *ipar);
 typedef void radau_jac_t(double *t, double *y, double *ydot, 
                          double *J, double* cj, 
                          double *rpar, F_INT *ipar);
+typedef void radau_mas_t(double *t, double *y, double *ydot, 
+                         double *J, double* cj, 
+                         double *rpar, F_INT *ipar);
+typedef void radau_solout_t(double *t, double *y, double *ydot, 
+                            double *J, double* cj, 
+                            double *rpar, F_INT *ipar);
 
-void DDASSL(radau_f_t *res, F_INT *neq, double *t, 
-           double *y, double *yp, double *tout, 
-           F_INT *info, double *rtol, double *atol,
-           F_INT *idid, double *rwork, F_INT *lrw,
-           F_INT *iwork, F_INT *liw, double *rpar, 
-           F_INT *ipar);
+// SUBROUTINE RADAU5(N,FCN,X,Y,XEND,H,
+// &                  RTOL,ATOL,ITOL,
+// &                  JAC ,IJAC,MLJAC,MUJAC,
+// &                  MAS ,IMAS,MLMAS,MUMAS,
+// &                  SOLOUT,IOUT,
+// &                  WORK,LWORK,IWORK,LIWORK,RPAR,IPAR,IDID)
+void RADAU(F_INT *neq, radau_f_t *f, double *t, 
+           double *y, double *tout, double *h, 
+           double* rtol, double *atol, F_INT* itol, 
+           radau_jac_t *jac, F_INT *ijac /*should be boolean*/, 
+           F_INT *mljac /*should be boolean*/, F_INT *mujac, 
+           radau_mas_t *mas, F_INT *imas /*should be boolean*/, 
+           F_INT *mlmas /*should be boolean*/, F_INT *mumas, 
+           radau_solout_t *solout, F_INT *iout,
+           double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
+           double *rpar, F_INT *ipar, F_INT *idid);
 
-void dassl_f(double *t, double *y, double *yp, 
-             double *f, F_INT *ierr, 
-             double *rpar, F_INT *ipar)
+
+// TODO: Perform the transformation
+// u' = v
+// 0 = f(t, u, v)
+void radau_f(F_INT *neq, double *t, double *y, 
+            double *f, double *rpar, F_INT *ipar)
 {
     PyObject *y_obj = NULL;
     PyObject *yp_obj = NULL;
@@ -56,7 +74,7 @@ void dassl_f(double *t, double *y, double *yp,
     PyArrayObject *result_array = NULL;
 
     npy_intp dims[1];
-    dims[0] = global_dassl_params.neqn;
+    dims[0] = global_radau_params.neqn;
 
     /* Build numpy arrays from y and yp. */
     y_obj = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, y);
@@ -83,9 +101,9 @@ void dassl_f(double *t, double *y, double *yp,
     }
 
     /* Call the Python function. */
-    result = PyObject_CallObject(global_dassl_params.python_function, arglist);
+    result = PyObject_CallObject(global_radau_params.python_function, arglist);
     if (result == NULL) {
-        PyErr_SetString(PyExc_ValueError, "PyObject_CallObject(global_dassl_params.python_function, arglist) failed.");
+        PyErr_SetString(PyExc_ValueError, "PyObject_CallObject(global_radau_params.python_function, arglist) failed.");
         goto fail;
     }
 
@@ -108,12 +126,12 @@ void dassl_f(double *t, double *y, double *yp,
         return;
 }
 
-
-void dassl_jac(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, 
+// TODO:
+void radau_jac(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, 
              double *t, double *y, double *ydot, double *J, 
              double *rpar, F_INT *ipar){}
 
-static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
+static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *f_obj = NULL;
     PyObject *J_obj = Py_None;
@@ -226,9 +244,9 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     // numerical jacobian
     info[5] = jnum;
 
-    // set global_dassl_params
-    global_dassl_params.neqn = neqn;
-    global_dassl_params.python_function = f_obj;
+    // set global parameters
+    global_radau_params.neqn = neqn;
+    global_radau_params.python_function = f_obj;
 
     // store solution in python list and start with initial values
     order_sol = PyList_New(0);
@@ -327,7 +345,7 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
 }
 
-PyDoc_STRVAR(dassl_doc,
+PyDoc_STRVAR(radau_doc,
 "integrate(f, t_span, y0, yp0)\n"
 "\n"
 "Solve an ODE system using a user-defined derivative function.\n"
