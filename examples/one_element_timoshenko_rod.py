@@ -192,15 +192,15 @@ if __name__ == "__main__":
 
     # solver options
     atol = 1e-3
-    rtol = 1e-3
+    rtol = 1e-6
 
     ##############
     # dae solution
     ##############
     start = time.time()
     # sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol)
-    # sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
-    sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    # sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
     
     print(sol)

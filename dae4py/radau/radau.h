@@ -226,6 +226,7 @@ void radau_solout(F_INT *nr, double *told, double *t, double *y,
         return;
 }
 // TODO:
+// - add dense output for solout
 // - add possibility for index 2 and 3 varibles to iwork
 // - allow for more options in iwork
 static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -362,9 +363,6 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 
     // initialize iwork and rwork
-    // lrwork = 20 + neqn * (neqn + neqn + 3 * neqn + 12);
-    // lrwork = 20 + neqn * (5 * neqn + 12);
-    // N*(LJAC+LMAS+NSMAX*LE+3*NSMAX+3)+20
     lrwork = 20 + neqn * (neqn + 1 + 7 * neqn + 3 * 7 + 3);
     liwork = 3 * neqn + 20;
 
