@@ -12,9 +12,13 @@
 
 typedef struct _radau_globals {
     PyObject *python_function;
+    PyObject *order_sol;
+    PyObject *t_sol;
+    PyObject *y_sol;
+    PyObject *yp_sol;
 } radau_params;
 
-static radau_params global_radau_params = {NULL};
+static radau_params global_radau_params = {NULL, NULL, NULL, NULL, NULL};
 
 #if defined(UPPERCASE_FORTRAN)
     #if defined(NO_APPEND_FORTRAN)
@@ -38,12 +42,9 @@ typedef void radau_jac_t(double *t, double *y, double *ydot,
 typedef void radau_mas_t(F_INT *neq, double *am, F_INT *lmas,
                          double *rpar, F_INT *ipar);
 
-//  SUBROUTINE SOLOUT (NR,XOLD,X,Y,CONT,LRC,N,
-//                     RPAR,IPAR,IRTRN)
-// TODO:
-typedef void radau_solout_t(double *t, double *y, double *ydot, 
-                            double *J, double* cj, 
-                            double *rpar, F_INT *ipar);
+typedef void radau_solout_t(F_INT *nr, double *told, double *t, double *y, 
+                            double *contr, F_INT *lrc, F_INT *neqn,
+                            double *rpar, F_INT *ipar, F_INT *itrn);
 
 void RADAU5(F_INT *neq, radau_f_t *f, double *t, 
             double *y, double *tout, double *h, 
@@ -156,35 +157,9 @@ void radau_jac(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj,
              double *t, double *y, double *ydot, double *J, 
              double *rpar, F_INT *ipar){}
 
-// AM(neq, lmas)
 void radau_mas(F_INT *neqn, double *am, F_INT *lmas,
                double *rpar, F_INT *ipar) {
-
-    // column-major ordering
     int n = (*neqn) / 2;
-    // // for (int j = 0; j < (*lmas); j++) {
-    // //     for (int i = 0; i < (*neqn); i++) {
-    // for (int j = 0; j < n; j++) {
-    //     for (int i = 0; i < n; i++) {
-    //         // if (i == j && i < n) {
-    //         //     am[j * (*lmas) + i] = 1.0;
-    //         // } else {
-    //         //     am[j * (*lmas) + i] = 0.0;
-    //         // }
-    //         am[j * n + i] = 0.0;
-    //     }
-    // }
-
-    // full matrix
-    // for (int j = 0; j < (*lmas); j++) {
-    //     for (int i = 0; i < (*neqn); i++) {
-    //         if (i == j && i < n) {
-    //             am[j * (*lmas) + i] = 1.0;
-    //         } else {
-    //             am[j * (*lmas) + i] = 0.0;
-    //         }
-    //     }
-    // }
 
     // banded
     for (int j = 0; j < (*neqn); j++) {
@@ -196,17 +171,60 @@ void radau_mas(F_INT *neqn, double *am, F_INT *lmas,
     }
 }
 
+void radau_solout(F_INT *nr, double *told, double *t, double *y, 
+                  double *contr, F_INT *lrc, F_INT *neqn,
+                  double *rpar, F_INT *ipar, F_INT *itrn) {
+
+    PyObject *u_obj = NULL;
+    PyObject *v_obj = NULL;
+    PyArrayObject *u_array = NULL;
+    PyArrayObject *v_array = NULL;
+
+    // dimension of implicit differential equation since y = (u, v)
+    F_INT n = (*neqn) / 2;
+    npy_intp dims[1];
+    dims[0] = n;
+
+    // decompose y = (u, v)
+    double *u = y;
+    double *v = y + n;
+
+    /* Build numpy arrays from u and v. */
+    u_obj = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, u);
+    if (u_obj == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, u) failed.");
+        goto fail;
+    }
+    v_obj = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, v);
+    if (v_obj == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, v) failed.");
+        goto fail;
+    }
+    u_array = (PyArrayObject *) PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0);
+    if (u_array == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0) failed.");
+        goto fail;
+    }
+    v_array = (PyArrayObject *) PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0);
+    if (v_array == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0) failed.");
+        goto fail;
+    }
+
+    PyList_Append(global_radau_params.t_sol, PyFloat_FromDouble(*t));
+    PyList_Append(global_radau_params.y_sol, PyArray_NewCopy(u_array, NPY_ANYORDER));
+    PyList_Append(global_radau_params.yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
+
+    fail:
+        Py_XDECREF(u_obj);
+        Py_XDECREF(v_obj);
+        Py_XDECREF(v_array);
+        Py_XDECREF(u_array);
+        return;
+}
 // TODO:
-void radau_solout(double *t, double *y, double *ydot, 
-                  double *J, double* cj, 
-                  double *rpar, F_INT *ipar) {}
-// TODO:
-// - solout
-// - mass matrix should not be necessary due to second order system
-// - correctly return iwork
 // - add possibility for index 2 and 3 varibles to iwork
 // - allow for more options in iwork
-// - documentation
 static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *f_obj = NULL;
@@ -214,24 +232,20 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *t_span_obj = NULL;
     PyObject *u_obj = NULL;
     PyObject *v_obj = NULL;
-    PyObject *order_sol;
-    PyObject *t_sol;
-    PyObject *y_sol;
-    PyObject *yp_sol;
     PyArrayObject *u_array = NULL;
     PyArrayObject *v_array = NULL;
 
     double rtol = 1.0e-3;
     double atol = 1.0e-6;
-    double h = 1e-5;
+    double h = 1e-3;
     double t, t1;
     double *u, *v, *y;
 
-    int success = 1;
+    int success;
 
     int n;
     int neqn;
-    int iout = 0;
+    int iout = 1; // use solout
 
     int ijac;
     int mljac;
@@ -241,15 +255,12 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     int mlmas;
     int mumas;
 
-    int jnum;
-    int ninfo = 15;
-    int itol = 0;
+    int itol = 0; // scalar tolerances
 
     int lrwork;
     int liwork;
     double *rwork;
     int *iwork;
-    int *info;
 
     double *rpar;
     int *ipar;
@@ -271,10 +282,10 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
         if (!PyCallable_Check(J_obj)) {
             PyErr_SetString(PyExc_ValueError, "`J` must be a callable function.");
         }
-        jnum = 1;
+        ijac = 1;
         PyErr_SetString(PyExc_ValueError, "User-defined Jacobian `J` is not implemented yet.");
     } else {
-        jnum = 0; 
+        ijac = 0; 
     }
 
     // unpack t_span tuple
@@ -366,18 +377,13 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     iwork[8] = n;
     iwork[9] = n;
 
-    // TODO:
+    // full jacobian with finite differences
     ijac = 0;
-    // mljac = n;
-    // mujac = n;
     mljac = neqn;
     mujac = neqn;
     
+    // banded user-defined jacobian
     imas = 1;
-    // mlmas = n;
-    // mumas = n;
-    // mlmas = neqn;
-    // mumas = neqn;
     mlmas = 1;
     mumas = 1;
 
@@ -385,26 +391,16 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     global_radau_params.python_function = f_obj;
 
     // store solution in python list and start with initial values
-    order_sol = PyList_New(0);
-    t_sol = PyList_New(0);
-    y_sol = PyList_New(0);
-    yp_sol = PyList_New(0);
-    // PyList_Append(order_sol, PyLong_FromLong(1));
-    PyList_Append(t_sol, PyFloat_FromDouble(t));
-    PyList_Append(y_sol, PyArray_NewCopy(u_array, NPY_ANYORDER));
-    PyList_Append(yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
+    global_radau_params.order_sol = PyList_New(0);
+    global_radau_params.t_sol = PyList_New(0);
+    global_radau_params.y_sol = PyList_New(0);
+    global_radau_params.yp_sol = PyList_New(0);
+    // PyList_Append(global_radau_params.order_sol, PyLong_FromLong(1));
+    PyList_Append(global_radau_params.t_sol, PyFloat_FromDouble(t));
+    PyList_Append(global_radau_params.y_sol, PyArray_NewCopy(u_array, NPY_ANYORDER));
+    PyList_Append(global_radau_params.yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
 
     // call radau solver
-    // void RADAU(F_INT *neq, radau_f_t *f, double *t, 
-    //         double *y, double *tout, double *h, 
-    //         double* rtol, double *atol, F_INT* itol, 
-    //         radau_jac_t *jac, F_INT *ijac /*should be boolean*/, 
-    //         F_INT *mljac /*should be boolean*/, F_INT *mujac, 
-    //         radau_mas_t *mas, F_INT *imas /*should be boolean*/, 
-    //         F_INT *mlmas /*should be boolean*/, F_INT *mumas, 
-    //         radau_solout_t *solout, F_INT *iout,
-    //         double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
-    //         double *rpar, F_INT *ipar, F_INT *idid);
     RADAU5(&neqn, radau_f, &t, y, &t1, &h, 
            &rtol, &atol, &itol, 
            radau_jac, &ijac, &mljac, &mujac,
@@ -413,36 +409,12 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
            rwork, &lrwork, iwork, &liwork, 
            rpar, ipar, &idid);
 
-    // store new state in solution lists
-    // PyList_Append(order_sol, PyLong_FromLong(iwork[7]));
-    PyList_Append(t_sol, PyFloat_FromDouble(t));
-    PyList_Append(y_sol, PyArray_NewCopy(u_array, NPY_ANYORDER));
-    PyList_Append(yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
-
-    // idid = 0;
-    // while (idid < 2) {
-    //     // call dassl solver
-    //     DDASSL(dassl_f, &neqn, &t, y, yp,
-    //         &t1, info, &rtol, &atol, &idid, 
-    //         rwork, &lrwork, iwork, &liwork, 
-    //         rpar, ipar);
-
-    //     // an error occured
-    //     if (idid < -1) {
-    //         success = 0;
-    //         break;
-    //     }
-
-    //     // store new state in solution lists
-    //     PyList_Append(order_sol, PyLong_FromLong(iwork[7]));
-    //     PyList_Append(t_sol, PyFloat_FromDouble(t));
-    //     PyList_Append(y_sol, PyArray_NewCopy(y_array, NPY_ANYORDER));
-    //     PyList_Append(yp_sol, PyArray_NewCopy(yp_array, NPY_ANYORDER));
-    // }
+    success = idid > 0;
 
     // cleanup
     free(rwork);
     free(iwork);
+    free(y);
     Py_XDECREF(f_obj);
     Py_XDECREF(J_obj);
     Py_XDECREF(t_span_obj);
@@ -455,36 +427,36 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
         "{s:N,s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
         "success", success ? Py_True : Py_False,
         "order", PyArray_Return(PyArray_FromAny(
-                                order_sol,              // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
+                                global_radau_params.order_sol, // Input object
+                                NULL,                          // Desired data type (None means let NumPy decide)
+                                0,                             // Minimum number of dimensions
+                                0,                             // Maximum number of dimensions
+                                NPY_ARRAY_DEFAULT,             // Flags
+                                NULL)                          // Array description (NULL means default)
                             ),
         "t", PyArray_Return(PyArray_FromAny(
-                                t_sol,                  // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
+                                global_radau_params.t_sol, // Input object
+                                NULL,                      // Desired data type (None means let NumPy decide)
+                                0,                         // Minimum number of dimensions
+                                0,                         // Maximum number of dimensions
+                                NPY_ARRAY_DEFAULT,         // Flags
+                                NULL)                      // Array description (NULL means default)
                             ),
         "y", PyArray_Return(PyArray_FromAny(
-                                y_sol,                  // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
+                                global_radau_params.y_sol, // Input object
+                                NULL,                      // Desired data type (None means let NumPy decide)
+                                0,                         // Minimum number of dimensions
+                                0,                         // Maximum number of dimensions
+                                NPY_ARRAY_DEFAULT,         // Flags
+                                NULL)                      // Array description (NULL means default)
                             ),
         "yp", PyArray_Return(PyArray_FromAny(
-                                yp_sol,                 // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
+                                global_radau_params.yp_sol, // Input object
+                                NULL,                       // Desired data type (None means let NumPy decide)
+                                0,                          // Minimum number of dimensions
+                                0,                          // Maximum number of dimensions
+                                NPY_ARRAY_DEFAULT,          // Flags
+                                NULL)                       // Array description (NULL means default)
                             ),
         "nf", iwork[13],
         "njac", iwork[14],
@@ -498,6 +470,7 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     fail:
         free(rwork);
         free(iwork);
+        free(y);
         Py_XDECREF(f_obj);
         Py_XDECREF(J_obj);
         Py_XDECREF(t_span_obj);
@@ -509,7 +482,7 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 PyDoc_STRVAR(radau_doc,
-"integrate(f, t_span, y0, yp0)\n"
+"radau(f, t_span, y0, yp0)\n"
 "\n"
 "Solve an ODE system using a user-defined derivative function.\n"
 "\n"

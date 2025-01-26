@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from dae4py import dassl, pside
+from dae4py import dassl, pside, radau
 
 
 def smoothstep2(x, x_min=0, x_max=1):
@@ -192,14 +192,15 @@ if __name__ == "__main__":
 
     # solver options
     atol = 1e-3
-    rtol = 1e-6
+    rtol = 1e-3
 
     ##############
     # dae solution
     ##############
     start = time.time()
     # sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol)
-    sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    # sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
     
     print(sol)
