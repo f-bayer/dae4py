@@ -12,25 +12,27 @@
 
 typedef struct _radau_globals {
     PyObject *python_function;
-    PyObject *order_sol;
     PyObject *t_sol;
     PyObject *y_sol;
     PyObject *yp_sol;
 } radau_params;
 
-static radau_params global_radau_params = {NULL, NULL, NULL, NULL, NULL};
+static radau_params global_radau_params = {NULL, NULL, NULL, NULL};
 
 #if defined(UPPERCASE_FORTRAN)
     #if defined(NO_APPEND_FORTRAN)
         /* nothing to do here */
     #else
-        #define RADAU5  RADAU5_
+        // #define RADAU5  RADAU5_
+        #define RADAU  RADAU_
     #endif
 #else
     #if defined(NO_APPEND_FORTRAN)
-        #define RADAU5  radau5
+        // #define RADAU5  radau5
+        #define RADAU  radau
     #else
-        #define RADAU5  radau5_
+        // #define RADAU5  radau5_
+        #define RADAU  radau_
     #endif
 #endif
 
@@ -46,7 +48,8 @@ typedef void radau_solout_t(F_INT *nr, double *told, double *t, double *y,
                             double *contr, F_INT *lrc, F_INT *neqn,
                             double *rpar, F_INT *ipar, F_INT *itrn);
 
-void RADAU5(F_INT *neq, radau_f_t *f, double *t, 
+// void RADAU5(F_INT *neq, radau_f_t *f, double *t, 
+void RADAU(F_INT *neq, radau_f_t *f, double *t, 
             double *y, double *tout, double *h, 
             double* rtol, double *atol, F_INT* itol, 
             radau_jac_t *jac, F_INT *ijac /*should be boolean*/, 
@@ -360,7 +363,9 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
 
     // initialize iwork and rwork
     // lrwork = 20 + neqn * (neqn + neqn + 3 * neqn + 12);
-    lrwork = 20 + neqn * (5 * neqn + 12);
+    // lrwork = 20 + neqn * (5 * neqn + 12);
+    // N*(LJAC+LMAS+NSMAX*LE+3*NSMAX+3)+20
+    lrwork = 20 + neqn * (neqn + 1 + 7 * neqn + 3 * 7 + 3);
     liwork = 3 * neqn + 20;
 
     rwork = malloc(lrwork * sizeof(double));
@@ -391,17 +396,16 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     global_radau_params.python_function = f_obj;
 
     // store solution in python list and start with initial values
-    global_radau_params.order_sol = PyList_New(0);
     global_radau_params.t_sol = PyList_New(0);
     global_radau_params.y_sol = PyList_New(0);
     global_radau_params.yp_sol = PyList_New(0);
-    // PyList_Append(global_radau_params.order_sol, PyLong_FromLong(1));
     PyList_Append(global_radau_params.t_sol, PyFloat_FromDouble(t));
     PyList_Append(global_radau_params.y_sol, PyArray_NewCopy(u_array, NPY_ANYORDER));
     PyList_Append(global_radau_params.yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
 
     // call radau solver
-    RADAU5(&neqn, radau_f, &t, y, &t1, &h, 
+    // RADAU5(&neqn, radau_f, &t, y, &t1, &h, 
+    RADAU(&neqn, radau_f, &t, y, &t1, &h, 
            &rtol, &atol, &itol, 
            radau_jac, &ijac, &mljac, &mujac,
            radau_mas, &imas, & mlmas, &mumas,
@@ -424,16 +428,8 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_XDECREF(v_array);
     
     return Py_BuildValue(
-        "{s:N,s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
+        "{s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
         "success", success ? Py_True : Py_False,
-        "order", PyArray_Return(PyArray_FromAny(
-                                global_radau_params.order_sol, // Input object
-                                NULL,                          // Desired data type (None means let NumPy decide)
-                                0,                             // Minimum number of dimensions
-                                0,                             // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,             // Flags
-                                NULL)                          // Array description (NULL means default)
-                            ),
         "t", PyArray_Return(PyArray_FromAny(
                                 global_radau_params.t_sol, // Input object
                                 NULL,                      // Desired data type (None means let NumPy decide)
