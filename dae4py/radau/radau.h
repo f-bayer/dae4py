@@ -12,22 +12,21 @@
 
 typedef struct _radau_globals {
     PyObject *python_function;
-    int neqn;
 } radau_params;
 
-static radau_params global_radau_params = {NULL, 0};
+static radau_params global_radau_params = {NULL};
 
 #if defined(UPPERCASE_FORTRAN)
     #if defined(NO_APPEND_FORTRAN)
         /* nothing to do here */
     #else
-        #define RADAU  RADAU_
+        #define RADAU5  RADAU5_
     #endif
 #else
     #if defined(NO_APPEND_FORTRAN)
-        #define RADAU  radau
+        #define RADAU5  radau5
     #else
-        #define RADAU  radau_
+        #define RADAU5  radau5_
     #endif
 #endif
 
@@ -36,35 +35,31 @@ typedef void radau_f_t(F_INT *neq, double *t, double *y,
 typedef void radau_jac_t(double *t, double *y, double *ydot, 
                          double *J, double* cj, 
                          double *rpar, F_INT *ipar);
-typedef void radau_mas_t(double *t, double *y, double *ydot, 
-                         double *J, double* cj, 
-                         double *rpar, F_INT *ipar);
 typedef void radau_mas_t(F_INT *neq, double *am, F_INT *lmas,
                          double *rpar, F_INT *ipar);
+
+//  SUBROUTINE SOLOUT (NR,XOLD,X,Y,CONT,LRC,N,
+//                     RPAR,IPAR,IRTRN)
+// TODO:
 typedef void radau_solout_t(double *t, double *y, double *ydot, 
                             double *J, double* cj, 
                             double *rpar, F_INT *ipar);
 
-// SUBROUTINE RADAU5(N,FCN,X,Y,XEND,H,
-// &                  RTOL,ATOL,ITOL,
-// &                  JAC ,IJAC,MLJAC,MUJAC,
-// &                  MAS ,IMAS,MLMAS,MUMAS,
-// &                  SOLOUT,IOUT,
-// &                  WORK,LWORK,IWORK,LIWORK,RPAR,IPAR,IDID)
-void RADAU(F_INT *neq, radau_f_t *f, double *t, 
-           double *y, double *tout, double *h, 
-           double* rtol, double *atol, F_INT* itol, 
-           radau_jac_t *jac, F_INT *ijac /*should be boolean*/, 
-           F_INT *mljac /*should be boolean*/, F_INT *mujac, 
-           radau_mas_t *mas, F_INT *imas /*should be boolean*/, 
-           F_INT *mlmas /*should be boolean*/, F_INT *mumas, 
-           radau_solout_t *solout, F_INT *iout,
-           double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
-           double *rpar, F_INT *ipar, F_INT *idid);
+void RADAU5(F_INT *neq, radau_f_t *f, double *t, 
+            double *y, double *tout, double *h, 
+            double* rtol, double *atol, F_INT* itol, 
+            radau_jac_t *jac, F_INT *ijac /*should be boolean*/, 
+            F_INT *mljac /*should be boolean*/, F_INT *mujac, 
+            radau_mas_t *mas, F_INT *imas /*should be boolean*/, 
+            F_INT *mlmas /*should be boolean*/, F_INT *mumas, 
+            radau_solout_t *solout, F_INT *iout,
+            double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
+            double *rpar, F_INT *ipar, F_INT *idid);
 
-// f(t, y):
-//      u' = v
-//      0 = f(t, u, v)
+// f(t, y) = [
+//  u' = v
+//  0 = f(t, u, v)
+// ]
 void radau_f(F_INT *neqn, double *t, double *y, 
             double *f, double *rpar, F_INT *ipar)
 {
@@ -73,11 +68,12 @@ void radau_f(F_INT *neqn, double *t, double *y,
     PyObject *v_obj = NULL;
     PyObject *result = NULL;
     PyObject *arglist = NULL;
+    PyArrayObject *u_array = NULL;
     PyArrayObject *v_array = NULL;
     PyArrayObject *result_array = NULL;
 
     // dimension of implicit differential equation since y = (u, v)
-    F_INT n = *neqn / 2;
+    F_INT n = (*neqn) / 2;
     npy_intp dims[1];
     dims[0] = n;
 
@@ -116,10 +112,15 @@ void radau_f(F_INT *neqn, double *t, double *y,
         goto fail;
     }
 
-    /* Build numpy array from u and result. */
+    /* Build numpy array from u, v and result. */
     u_array = (PyArrayObject *) PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0);
     if (u_array == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0) failed.");
+        goto fail;
+    }
+    v_array = (PyArrayObject *) PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0);
+    if (v_array == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0) failed.");
         goto fail;
     }
     result_array = (PyArrayObject *) PyArray_ContiguousFromObject(result, NPY_DOUBLE, 0, 0);
@@ -131,14 +132,20 @@ void radau_f(F_INT *neqn, double *t, double *y,
     /* Copy data from the result array to C array. */
     // u' = v
     // 0 = f(t, u, v)
-    memcpy(f, PyArray_DATA(u_array), PyArray_NBYTES(u_array));
+    memcpy(f, PyArray_DATA(v_array), PyArray_NBYTES(v_array));
     memcpy(f + n, PyArray_DATA(result_array), PyArray_NBYTES(result_array));
+    // double *res = (double *) PyArray_DATA(result_array);
+    // for (int i = 0; i < n; i++) {
+    //     f[i] = v[i];
+    //     f[i + n] = res[i];
+    // }
 
     fail:
         Py_XDECREF(u_obj);
         Py_XDECREF(v_obj);
         Py_XDECREF(result);
         Py_XDECREF(arglist);
+        Py_XDECREF(v_array);
         Py_XDECREF(u_array);
         Py_XDECREF(result_array);
         return;
@@ -152,32 +159,54 @@ void radau_jac(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj,
 // AM(neq, lmas)
 void radau_mas(F_INT *neqn, double *am, F_INT *lmas,
                double *rpar, F_INT *ipar) {
-    // // allocate memory for the matrix
-    // *am = (double *)calloc(lmas * neqn, sizeof(double));
-    // if (am == NULL) {
-    //     printf("Memory allocation in radau_mas failed.\n");
-    //     return NULL;
-    // }
-
-    // // fill the diagonal with the specified values
-    // // remaining diagonal elements are already 0 due to calloc
-    // for (int i = 0; i < neqn / 2; i++) {
-    //     am[i * size + i] = 1.0; // column-major order: A(i, i) = A[i * size + i]
-    // }
 
     // column-major ordering
-    int n = neqn / 2;
-    for (int j = 0; j < lmas; j++) {
-        for (int i = 0; i < neqn; i++) {
-            if (i == j && i < n) {
-                am[j * lmas + i] = 1.0;
-            } else {
-                am[j * lmas + i] = 0.0;
-            }
+    int n = (*neqn) / 2;
+    // // for (int j = 0; j < (*lmas); j++) {
+    // //     for (int i = 0; i < (*neqn); i++) {
+    // for (int j = 0; j < n; j++) {
+    //     for (int i = 0; i < n; i++) {
+    //         // if (i == j && i < n) {
+    //         //     am[j * (*lmas) + i] = 1.0;
+    //         // } else {
+    //         //     am[j * (*lmas) + i] = 0.0;
+    //         // }
+    //         am[j * n + i] = 0.0;
+    //     }
+    // }
+
+    // full matrix
+    // for (int j = 0; j < (*lmas); j++) {
+    //     for (int i = 0; i < (*neqn); i++) {
+    //         if (i == j && i < n) {
+    //             am[j * (*lmas) + i] = 1.0;
+    //         } else {
+    //             am[j * (*lmas) + i] = 0.0;
+    //         }
+    //     }
+    // }
+
+    // banded
+    for (int j = 0; j < (*neqn); j++) {
+        if (j < n) {
+            am[j] = 1.0;
+        } else {
+            am[j] = 0.0;
         }
     }
 }
 
+// TODO:
+void radau_solout(double *t, double *y, double *ydot, 
+                  double *J, double* cj, 
+                  double *rpar, F_INT *ipar) {}
+// TODO:
+// - solout
+// - mass matrix should not be necessary due to second order system
+// - correctly return iwork
+// - add possibility for index 2 and 3 varibles to iwork
+// - allow for more options in iwork
+// - documentation
 static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *f_obj = NULL;
@@ -185,13 +214,12 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *t_span_obj = NULL;
     PyObject *u_obj = NULL;
     PyObject *v_obj = NULL;
-    // PyObject *y_obj = NULL;
     PyObject *order_sol;
     PyObject *t_sol;
     PyObject *y_sol;
+    PyObject *yp_sol;
     PyArrayObject *u_array = NULL;
     PyArrayObject *v_array = NULL;
-    // PyArrayObject *y_array = NULL;
 
     double rtol = 1.0e-3;
     double atol = 1.0e-6;
@@ -203,9 +231,15 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
 
     int n;
     int neqn;
+    int iout = 0;
 
-    int ijac, mljac, mujac;
-    int ijac, mljac, mujac;
+    int ijac;
+    int mljac;
+    int mujac;
+    
+    int imas;
+    int mlmas;
+    int mumas;
 
     int jnum;
     int ninfo = 15;
@@ -264,7 +298,7 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     neqn = 2 * n;
 
     v_array = (PyArrayObject *) PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0);
-    if (yp_array == NULL) {
+    if (v_array == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0) failed");
         goto fail;
     }
@@ -288,6 +322,9 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     v = y + n;
 
     /* Build numpy arrays from u and v. */
+    npy_intp dims[1];
+    dims[0] = n;
+
     u_obj = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, u);
     if (u_obj == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, u) failed.");
@@ -296,6 +333,17 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     v_obj = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, v);
     if (v_obj == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, v) failed.");
+        goto fail;
+    }
+
+    u_array = (PyArrayObject *) PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0);
+    if (u_array == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0) failed");
+        goto fail;
+    }
+    v_array = (PyArrayObject *) PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0);
+    if (v_array == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0) failed");
         goto fail;
     }
 
@@ -316,10 +364,24 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
 
     // second order system
     iwork[8] = n;
-    // iwork[9] = n; // this is implicitely assumed
+    iwork[9] = n;
+
+    // TODO:
+    ijac = 0;
+    // mljac = n;
+    // mujac = n;
+    mljac = neqn;
+    mujac = neqn;
+    
+    imas = 1;
+    // mlmas = n;
+    // mumas = n;
+    // mlmas = neqn;
+    // mumas = neqn;
+    mlmas = 1;
+    mumas = 1;
 
     // set global parameters
-    global_radau_params.neqn = neqn;
     global_radau_params.python_function = f_obj;
 
     // store solution in python list and start with initial values
@@ -343,13 +405,19 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     //         radau_solout_t *solout, F_INT *iout,
     //         double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
     //         double *rpar, F_INT *ipar, F_INT *idid);
-    RADAU(&neqn, radau_f, &t, y, &t1, &h, 
-          &rtol, &atol, &itol, 
-          radau_jac, &ijac, &mljac, &mujac,
-          radau_mas, &imas, & mlmas, &mumas,
-          radau_solout, &iout, 
-          rwork, &lrwork, iwork, &liwork, 
-          rpar, ipar, &idid);
+    RADAU5(&neqn, radau_f, &t, y, &t1, &h, 
+           &rtol, &atol, &itol, 
+           radau_jac, &ijac, &mljac, &mujac,
+           radau_mas, &imas, & mlmas, &mumas,
+           radau_solout, &iout, 
+           rwork, &lrwork, iwork, &liwork, 
+           rpar, ipar, &idid);
+
+    // store new state in solution lists
+    // PyList_Append(order_sol, PyLong_FromLong(iwork[7]));
+    PyList_Append(t_sol, PyFloat_FromDouble(t));
+    PyList_Append(y_sol, PyArray_NewCopy(u_array, NPY_ANYORDER));
+    PyList_Append(yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
 
     // idid = 0;
     // while (idid < 2) {
@@ -418,11 +486,13 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
                                 NPY_ARRAY_DEFAULT,      // Flags
                                 NULL)                   // Array description (NULL means default)
                             ),
-        "nsteps", iwork[10], // IWORK(11) total number of steps
-        "nf", iwork[11], // IWORK(12) number of function evaluations
-        "njac", iwork[12], // IWORK(13) number of jacobian evaluations
-        "nrejerror", iwork[13], // IWORK(14) total number of error test failures
-        "nrejnewton", iwork[14] // IWORK(15) total number of convergence test failures
+        "nf", iwork[13],
+        "njac", iwork[14],
+        "nsteps", iwork[15],
+        "naccpt", iwork[16],
+        "nrejerror", iwork[17],
+        "nlu", iwork[18],
+        "nsol", iwork[19]
     );
 
     fail:

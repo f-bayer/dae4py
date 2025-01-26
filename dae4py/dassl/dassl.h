@@ -31,14 +31,14 @@ static dassl_params global_dassl_params = {NULL, 0};
     #endif
 #endif
 
-typedef void radau_f_t(double *t, double *y, double *ydot, 
+typedef void dassl_f_t(double *t, double *y, double *ydot, 
                          double *f, F_INT *ires, 
                          double *rpar, F_INT *ipar);
-typedef void radau_jac_t(double *t, double *y, double *ydot, 
+typedef void dassl_jac_t(double *t, double *y, double *ydot, 
                          double *J, double* cj, 
                          double *rpar, F_INT *ipar);
 
-void DDASSL(radau_f_t *res, F_INT *neq, double *t, 
+void DDASSL(dassl_f_t *res, F_INT *neq, double *t, 
            double *y, double *yp, double *tout, 
            F_INT *info, double *rtol, double *atol,
            F_INT *idid, double *rwork, F_INT *lrw,

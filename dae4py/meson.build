@@ -5,9 +5,12 @@ dassl_src = [
 
 radau_src = [
     'radau/radau.h',
-    'radau/src/radau.f',
+    'radau/src/radau5.f',
     'radau/src/decsol.f',
     'radau/src/dc_decsol.f',
+    # 'radau/src/lapack.f',
+    # 'radau/src/lapackc.f',
+    # 'radau/src/dc_lapack.f',
 ]
 
 pside_src = [
@@ -20,6 +23,7 @@ py.extension_module(
     'dae4pymodule.c',
     dassl_src,
     pside_src,
+    radau_src,
     install: true,
     dependencies: [lapack_dep],
 )

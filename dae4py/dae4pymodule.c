@@ -4,11 +4,12 @@
 
 #include "dassl/dassl.h"
 #include "pside/pside.h"
-// #include "radau/radau.h"
+#include "radau/radau.h"
 
 static PyMethodDef methods[] = {
     {"dassl", (PyCFunction)dassl, METH_VARARGS | METH_KEYWORDS, dassl_doc},
     {"pside", (PyCFunction)pside, METH_VARARGS | METH_KEYWORDS, pside_doc},
+    {"radau", (PyCFunction)radau, METH_VARARGS | METH_KEYWORDS, radau_doc},
     {NULL, NULL, 0, NULL},
 };
 
