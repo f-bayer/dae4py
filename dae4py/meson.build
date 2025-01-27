@@ -9,8 +9,8 @@ radau_src = [
     'radau/src/radau.f',
     # 'radau/src/decsol.f',
     # 'radau/src/dc_decsol.f',
-    'radau/src/lapack.f',
-    'radau/src/lapackc.f',
+    # 'radau/src/lapack.f',
+    # 'radau/src/lapackc.f',
     'radau/src/dc_lapack.f',
 ]
 
