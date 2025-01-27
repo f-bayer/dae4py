@@ -113,25 +113,55 @@ void dassl_jac(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj,
              double *t, double *y, double *ydot, double *J, 
              double *rpar, F_INT *ipar){}
 
+static PyObject* linspace(double start, double stop, int num) {
+    // check for valid number of points
+    if (num <= 0) {
+        PyErr_SetString(PyExc_ValueError, "linspace: Number of points must be greater than 0");
+        return NULL;
+    }
+
+    // calculate the step-size
+    double step = (num > 1) ? (stop - start) / (num - 1) : 0.0;
+
+    // create a NumPy array of doubles
+    npy_intp dims[1] = {num};  // dimension of the array
+    PyObject* array = PyArray_SimpleNew(1, dims, NPY_DOUBLE);  // 1D array of type double
+    if (!array) {
+        PyErr_SetString(PyExc_RuntimeError, "linspace: Failed to create NumPy array");
+        return NULL;
+    }
+
+    // Fill the array with linearly spaced values
+    double* data = (double*)PyArray_DATA((PyArrayObject*)array);
+    for (int i = 0; i < num; i++) {
+        data[i] = start + i * step;
+    }
+
+    return array;
+}
+
 static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *f_obj = NULL;
     PyObject *J_obj = Py_None;
     PyObject *t_span_obj = NULL;
+    PyObject *t_eval_obj = Py_None;
     PyObject *y_obj = NULL;
     PyObject *yp_obj = NULL;
     PyObject *order_sol;
     PyObject *t_sol;
     PyObject *y_sol;
     PyObject *yp_sol;
+    PyArrayObject *t_eval_array = NULL;
     PyArrayObject *y_array = NULL;
     PyArrayObject *yp_array = NULL;
 
-    double rtol = 1.0e-3;
-    double atol = 1.0e-6;
+    double rtol = 1.0e-6;
+    double atol = 1.0e-3;
     double t, t1;
-    double *y, *yp;
+    double *t_eval_ptr, *y, *yp;
 
+    int nt_eval;
     int success = 1;
 
     int neqn;
@@ -150,10 +180,10 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
 
     // parse inputs
     static char *kwlist[] = {"f", "t_span", "y0", "yp0", // mandatory arguments
-                             "rtol", "atol", "J", NULL}; // optional arguments and NULL termination
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOOO", kwlist, 
+                             "rtol", "atol", "J", "t_eval", NULL}; // optional arguments and NULL termination
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOO", kwlist, 
                                      &f_obj, &t_span_obj, &y_obj, &yp_obj, // positional arguments
-                                     &rtol, &atol, &J_obj)) // optional arguments
+                                     &rtol, &atol, &J_obj, &t_eval_obj)) // optional arguments
         return NULL;
 
     // check if function and Jacobians (if present) are callable
@@ -175,6 +205,18 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     if (!(t1 > t)) {
         PyErr_SetString(PyExc_ValueError, "`t1` must larger than `t0`.");
     }
+
+    // check if t_eval is present, otherwise create array with 500 linear spaced points
+    if (t_eval_obj == Py_None) {
+        t_eval_obj = linspace(t, t1, 500);
+    }
+    t_eval_array = (PyArrayObject *) PyArray_ContiguousFromObject(t_eval_obj, NPY_DOUBLE, 0, 0);
+    if (t_eval_array == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(t_eval_obj, NPY_DOUBLE, 0, 0) failed");
+        goto fail;
+    }
+    t_eval_ptr = (double *) PyArray_DATA(t_eval_array);
+    nt_eval = PyArray_Size((PyObject *) t_eval_array);
 
     // initial conditions
     y_array = (PyArrayObject *) PyArray_ContiguousFromObject(y_obj, NPY_DOUBLE, 0, 0);
@@ -223,6 +265,9 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     // get intermediate results
     info[2] = 1;
+    // compute solution until t == t1
+    info[3] = 1;
+    rwork[0] = t1;
     // numerical jacobian
     info[5] = jnum;
 
@@ -240,18 +285,41 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     PyList_Append(y_sol, PyArray_NewCopy(y_array, NPY_ANYORDER));
     PyList_Append(yp_sol, PyArray_NewCopy(yp_array, NPY_ANYORDER));
 
-    idid = 0;
+    // first DASSL call
+    DDASSL(dassl_f, &neqn, &t, y, yp,
+        &(t_eval_ptr[1]), info, &rtol, &atol, &idid, 
+        rwork, &lrwork, iwork, &liwork, 
+        rpar, ipar);
+
+    // call dassl solver until t = t_eval[1] is reached
     while (idid < 2) {
-        // call dassl solver
         DDASSL(dassl_f, &neqn, &t, y, yp,
-            &t1, info, &rtol, &atol, &idid, 
+            &(t_eval_ptr[1]), info, &rtol, &atol, &idid, 
+            rwork, &lrwork, iwork, &liwork, 
+            rpar, ipar);
+    }
+
+    // store new state in solution lists
+    PyList_Append(order_sol, PyLong_FromLong(iwork[7]));
+    PyList_Append(t_sol, PyFloat_FromDouble(t));
+    PyList_Append(y_sol, PyArray_NewCopy(y_array, NPY_ANYORDER));
+    PyList_Append(yp_sol, PyArray_NewCopy(yp_array, NPY_ANYORDER));
+
+    // compute all other steps
+    for (int i = 2; i < nt_eval; i++) {
+        // continue integration with a new TOUT
+        idid = 2;
+        DDASSL(dassl_f, &neqn, &t, y, yp,
+            &(t_eval_ptr[i]), info, &rtol, &atol, &idid, 
             rwork, &lrwork, iwork, &liwork, 
             rpar, ipar);
 
-        // an error occured
-        if (idid < -1) {
-            success = 0;
-            break;
+        // call dassl solver until t = t_eval[i] is reached
+        while (idid < 2) {
+            DDASSL(dassl_f, &neqn, &t, y, yp,
+                &(t_eval_ptr[i]), info, &rtol, &atol, &idid, 
+                rwork, &lrwork, iwork, &liwork, 
+                rpar, ipar);
         }
 
         // store new state in solution lists
@@ -259,6 +327,7 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
         PyList_Append(t_sol, PyFloat_FromDouble(t));
         PyList_Append(y_sol, PyArray_NewCopy(y_array, NPY_ANYORDER));
         PyList_Append(yp_sol, PyArray_NewCopy(yp_array, NPY_ANYORDER));
+
     }
 
     // cleanup
@@ -267,8 +336,10 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_XDECREF(f_obj);
     Py_XDECREF(J_obj);
     Py_XDECREF(t_span_obj);
+    Py_XDECREF(t_eval_obj);
     Py_XDECREF(y_obj);
     Py_XDECREF(yp_obj);
+    Py_XDECREF(t_eval_array);
     Py_XDECREF(y_array);
     Py_XDECREF(yp_array);
     
@@ -320,24 +391,27 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
         Py_XDECREF(f_obj);
         Py_XDECREF(J_obj);
         Py_XDECREF(t_span_obj);
+        Py_XDECREF(t_eval_obj);
         Py_XDECREF(y_obj);
         Py_XDECREF(yp_obj);
+        Py_XDECREF(t_eval_array);
         Py_XDECREF(y_array);
         Py_XDECREF(yp_array);
         return NULL;
 }
 
 PyDoc_STRVAR(dassl_doc,
-"integrate(f, t_span, y0, yp0)\n"
+"dassl(f, t_span, y0, yp0, rtol=1e-6, atol=1e-3, J=None, t_eval=None)\n"
 "\n"
-"Solve an ODE system using a user-defined derivative function.\n"
+"Solve a DAE system f(t, y, y') = 0.\n"
 "\n"
 "Parameters\n"
 "----------\n"
 "f : callable\n"
-"    A Python function that computes the derivatives of the system.\n"
-"    The function must have the signature `f(t, y, yp)`, where `t` is the\n"
-"    current time, `y` is the state vector, and `yp` is the derivative of the state vector.\n"
+"    A Python function that defines the DAE system. The function \n"
+"    must have the signature `f(t, y, yp)`, where `t` is the\n"
+"    current time, `y` is the state vector, and `yp` is the \n"
+"    derivative of the state vector.\n"
 "\n"
 "t_span : array-like\n"
 "    A 2-element list or array defining the time interval `[t_start, t_end]`\n"
@@ -349,27 +423,38 @@ PyDoc_STRVAR(dassl_doc,
 "yp0 : array-like\n"
 "    The initial conditions for the derivative of the state vector `yp` at the start of the integration.\n"
 "\n"
+"rtol, atol: float (optional)\n"
+"    The used relative and absolute tolerances. Default values: rtol=1e-6, atol=1e-3.\n"
+"\n"
+"t_eval: array-like (optional)\n"
+"      The requested evaluation points. If not given, 500 equidistance points in t_span are chosen.\n"
+"\n"
 "Returns\n"
 "-------\n"
 "result : dict\n"
 "    A dictionary containing the results of the integration. The dictionary has the following keys:\n"
-"    - 't_sol': A list of time points at which the solution was recorded.\n"
-"    - 'y_sol': A list of state vectors corresponding to each time point.\n"
-"    - 'yp_sol': A list of derivative vectors corresponding to each time point.\n"
-"\n"
-"Raises\n"
-"------\n"
-"RuntimeError\n"
-"    If the integration fails due to an invalid function call or memory error.\n"
+"    - 'success': Was the integration successful?\n"
+"    - 'order': List of used integration order.\n"
+"    - 't': List of time points.\n"
+"    - 'y': List of stage values corresponding to t.\n"
+"    - 'yp': List of stage derivatives corresponding to t.\n"
+"    - 'nsteps': Total number of steps.\n"
+"    - 'nf': Number of function evaluations.\n"
+"    - 'njac': Number of jacobian evaluations.\n"
+"    - 'nrejerror': Number of error tests failures.\n"
+"    - 'nrejnewton': Number of convergence tests failures.\n"
 "\n"
 "Examples\n"
 "--------\n"
-">>> def rhs(t, y, yp):\n"
-">>>     # Example: A simple harmonic oscillator\n"
-">>>     yp[0] = y[1]\n"
-">>>     yp[1] = -y[0]\n"
-">>>     return 0\n"
-">>> result = integrate(rhs, [0, 10], [1.0, 0.0], [0.0, -1.0])\n"
-">>> print(result['t_sol'])\n"
-">>> print(result['y_sol'])\n"
+"def f(t, y, yp):\n"
+"    # Example: A simple harmonic oscillator\n"
+"    return np.array([\n"
+"        yp[0] - y[1],\n"
+"        yp[1] + y[0],\n"
+"    )]\n"
+"result = integrate(f, [0, 10], [1.0, 0.0], [0.0, -1.0])\n"
+"print(result)\n"
+"print(result['t'])\n"
+"print(result['y'])\n"
+"print(result['yp'])"
 );
