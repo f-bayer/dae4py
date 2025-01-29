@@ -292,7 +292,7 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
         rpar, ipar);
 
     // call dassl solver until t = t_eval[1] is reached
-    while (idid < 2) {
+    while (t < t_eval_ptr[1]) {
         DDASSL(dassl_f, &neqn, &t, y, yp,
             &(t_eval_ptr[1]), info, &rtol, &atol, &idid, 
             rwork, &lrwork, iwork, &liwork, 
@@ -308,14 +308,8 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     // compute all other steps
     for (int i = 2; i < nt_eval; i++) {
         // continue integration with a new TOUT
-        idid = 2;
-        DDASSL(dassl_f, &neqn, &t, y, yp,
-            &(t_eval_ptr[i]), info, &rtol, &atol, &idid, 
-            rwork, &lrwork, iwork, &liwork, 
-            rpar, ipar);
-
         // call dassl solver until t = t_eval[i] is reached
-        while (idid < 2) {
+        while (t < t_eval_ptr[i]) {
             DDASSL(dassl_f, &neqn, &t, y, yp,
                 &(t_eval_ptr[i]), info, &rtol, &atol, &idid, 
                 rwork, &lrwork, iwork, &liwork, 

@@ -19,8 +19,8 @@ if __name__ == "__main__":
     t0 = 0
     t1 = 1e2
     t_span = (t0, t1)
-    # t_eval = np.linspace(t0, t1, num=100)
-    t_eval = None
+    t_eval = np.linspace(t0, t1, num=int(1e3))
+    # t_eval = None
 
     # tolerances
     # rtol = atol = 9.8e-11
@@ -30,10 +30,6 @@ if __name__ == "__main__":
     # initial conditions
     y0 = np.array([1, 0], dtype=float)
     yp0 = np.array([-1, 1], dtype=float)
-
-    print(dassl.__doc__)
-
-    exit()
 
     start = time.time()
     # sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol)
@@ -53,9 +49,6 @@ if __name__ == "__main__":
     print(f"t.shape: {t.shape}")
     print(f"y.shape: {y.shape}")
     print(f"yp.shape: {yp.shape}")
-    
-    print(f"t: {t}")
-    # exit()
 
     # error
     diff = y[-1] - np.array([
