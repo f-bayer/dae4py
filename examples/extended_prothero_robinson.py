@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from dae4py import dassl, pside, radau
+from dae4py import dassl, pside, radau, radau5
 
 omega = 3
 eps = 1e3
@@ -59,9 +59,10 @@ if __name__ == "__main__":
     rtol = atol = 1e-10
 
     start = time.time()
-    sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
+    # sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
     # sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
-    # sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    # sol = radau5(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
     print(f"elapsed time: {end - start}")
     # print(sol)

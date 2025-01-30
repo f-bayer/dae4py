@@ -5,7 +5,7 @@ dassl_src = [
 
 radau_src = [
     'radau/radau.h',
-    #'radau/src/radau5.f',
+    'radau/src/radau5.f',
     'radau/src/radau.f',
     # 'radau/src/decsol.f',
     # 'radau/src/dc_decsol.f',

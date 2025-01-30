@@ -23,15 +23,15 @@ static radau_params global_radau_params = {NULL, NULL, NULL, NULL};
     #if defined(NO_APPEND_FORTRAN)
         /* nothing to do here */
     #else
-        // #define RADAU5  RADAU5_
+        #define RADAU5  RADAU5_
         #define RADAU  RADAU_
     #endif
 #else
     #if defined(NO_APPEND_FORTRAN)
-        // #define RADAU5  radau5
+        #define RADAU5  radau5
         #define RADAU  radau
     #else
-        // #define RADAU5  radau5_
+        #define RADAU5  radau5_
         #define RADAU  radau_
     #endif
 #endif
@@ -48,17 +48,20 @@ typedef void radau_solout_t(F_INT *nr, double *told, double *t, double *y,
                             double *contr, F_INT *lrc, F_INT *neqn,
                             double *rpar, F_INT *ipar, F_INT *itrn);
 
-// void RADAU5(F_INT *neq, radau_f_t *f, double *t, 
-void RADAU(F_INT *neq, radau_f_t *f, double *t, 
-            double *y, double *tout, double *h, 
-            double* rtol, double *atol, F_INT* itol, 
-            radau_jac_t *jac, F_INT *ijac /*should be boolean*/, 
-            F_INT *mljac /*should be boolean*/, F_INT *mujac, 
-            radau_mas_t *mas, F_INT *imas /*should be boolean*/, 
-            F_INT *mlmas /*should be boolean*/, F_INT *mumas, 
-            radau_solout_t *solout, F_INT *iout,
-            double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
-            double *rpar, F_INT *ipar, F_INT *idid);
+// function signature of radau calls
+typedef void radau_t(F_INT *neq, radau_f_t *f, double *t, 
+                     double *y, double *tout, double *h, 
+                     double* rtol, double *atol, F_INT* itol, 
+                     radau_jac_t *jac, F_INT *ijac /*should be boolean*/, 
+                     F_INT *mljac /*should be boolean*/, F_INT *mujac, 
+                     radau_mas_t *mas, F_INT *imas /*should be boolean*/, 
+                     F_INT *mlmas /*should be boolean*/, F_INT *mumas, 
+                     radau_solout_t *solout, F_INT *iout,
+                     double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
+                     double *rpar, F_INT *ipar, F_INT *idid);
+
+radau_t RADAU;
+radau_t RADAU5;
 
 // f(t, y) = [
 //  u' = v
@@ -155,10 +158,8 @@ void radau_f(F_INT *neqn, double *t, double *y,
         return;
 }
 
-// TODO:
-void radau_jac(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, 
-             double *t, double *y, double *ydot, double *J, 
-             double *rpar, F_INT *ipar){}
+void radau_jac(F_INT *neqn, double *t, double *y, double *dfy, 
+               F_INT *ldfym, double *rpar, F_INT *ipar){}
 
 void radau_mas(F_INT *neqn, double *am, F_INT *lmas,
                double *rpar, F_INT *ipar) {
@@ -225,11 +226,12 @@ void radau_solout(F_INT *nr, double *told, double *t, double *y,
         Py_XDECREF(u_array);
         return;
 }
+
 // TODO:
 // - add dense output for solout
 // - add possibility for index 2 and 3 varibles to iwork
 // - allow for more options in iwork
-static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
+static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, radau_t *radau_)
 {
     PyObject *f_obj = NULL;
     PyObject *J_obj = Py_None;
@@ -402,8 +404,7 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
     PyList_Append(global_radau_params.yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
 
     // call radau solver
-    // RADAU5(&neqn, radau_f, &t, y, &t1, &h, 
-    RADAU(&neqn, radau_f, &t, y, &t1, &h, 
+    radau_(&neqn, radau_f, &t, y, &t1, &h, 
            &rtol, &atol, &itol, 
            radau_jac, &ijac, &mljac, &mujac,
            radau_mas, &imas, & mlmas, &mumas,
@@ -475,49 +476,10 @@ static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
 }
 
-PyDoc_STRVAR(radau_doc,
-"radau(f, t_span, y0, yp0)\n"
-"\n"
-"Solve an ODE system using a user-defined derivative function.\n"
-"\n"
-"Parameters\n"
-"----------\n"
-"f : callable\n"
-"    A Python function that computes the derivatives of the system.\n"
-"    The function must have the signature `f(t, y, yp)`, where `t` is the\n"
-"    current time, `y` is the state vector, and `yp` is the derivative of the state vector.\n"
-"\n"
-"t_span : array-like\n"
-"    A 2-element list or array defining the time interval `[t_start, t_end]`\n"
-"    over which to integrate the system.\n"
-"\n"
-"y0 : array-like\n"
-"    The initial conditions for the state vector `y` at the start of the integration.\n"
-"\n"
-"yp0 : array-like\n"
-"    The initial conditions for the derivative of the state vector `yp` at the start of the integration.\n"
-"\n"
-"Returns\n"
-"-------\n"
-"result : dict\n"
-"    A dictionary containing the results of the integration. The dictionary has the following keys:\n"
-"    - 't_sol': A list of time points at which the solution was recorded.\n"
-"    - 'y_sol': A list of state vectors corresponding to each time point.\n"
-"    - 'yp_sol': A list of derivative vectors corresponding to each time point.\n"
-"\n"
-"Raises\n"
-"------\n"
-"RuntimeError\n"
-"    If the integration fails due to an invalid function call or memory error.\n"
-"\n"
-"Examples\n"
-"--------\n"
-">>> def rhs(t, y, yp):\n"
-">>>     # Example: A simple harmonic oscillator\n"
-">>>     yp[0] = y[1]\n"
-">>>     yp[1] = -y[0]\n"
-">>>     return 0\n"
-">>> result = integrate(rhs, [0, 10], [1.0, 0.0], [0.0, -1.0])\n"
-">>> print(result['t_sol'])\n"
-">>> print(result['y_sol'])\n"
-);
+static PyObject* radau(PyObject *self, PyObject *args, PyObject *kwargs) {
+    return radau_call(self, args, kwargs, RADAU);
+}
+
+static PyObject* radau5(PyObject *self, PyObject *args, PyObject *kwargs) {
+    return radau_call(self, args, kwargs, RADAU5);
+}
