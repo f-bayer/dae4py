@@ -8,6 +8,15 @@ version = '0.0.1'
 description = 'Python wrapper of DAE/IDE fotran solver.'
 readme = 'README.md'
 requires-python = '>=3.8'
+dependencies = [
+  "numpy==1.26.4",
+  "scipy==1.15.2",
+  "matplotlib==3.3.3",
+  "tqdm>=4.67.0",
+  "black>=25.1.0",
+  "pytest>=8.3.5",
+  "pytest-cov>=6.0.0",
+]
 license = {file = 'LICENSE.txt'}
 authors = [
   {name = 'Jonas Breuling', email = 'jonas.breuling@inm.uni-stuttgart.de'},

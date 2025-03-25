@@ -55,13 +55,12 @@ if __name__ == "__main__":
     print(f"yp0: {yp0}")
 
     # tolerances
-    # rtol = atol = 1e-6
     rtol = atol = 1e-10
 
     start = time.time()
-    # sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
+    sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
     # sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
-    sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
+    # sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     # sol = radau5(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
     print(f"elapsed time: {end - start}")
@@ -72,10 +71,6 @@ if __name__ == "__main__":
     y = sol["y"]
     yp = sol["yp"]
     assert success
-
-    print(f"t.shape: {t.shape}")
-    print(f"y.shape: {y.shape}")
-    print(f"yp.shape: {yp.shape}")
 
     # error
     y_true, yp_true = true_sol(t)
