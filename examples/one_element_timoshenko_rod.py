@@ -15,14 +15,14 @@ t0 = 0
 t1 = 10
 
 # geometry of the rod
-length = 1 # [m]
+length = 1  # [m]
 # width = 1e-2 # [m]
-width = 1e-3 # [m]
-density = 8.e3  # [kg / m^3]
+width = 1e-3  # [m]
+density = 8.0e3  # [kg / m^3]
 
 # material properties
-E = 260.0e9 # [N / m^2]
-G = 100.0e9 # [N / m^2]
+E = 260.0e9  # [N / m^2]
+G = 100.0e9  # [N / m^2]
 # E = 260.0e6 # [N / m^2]
 # G = 100.0e6 # [N / m^2]
 
@@ -51,25 +51,22 @@ M = np.diag([A, A, I]) * density * length**3 / 3
 
 def A_IB(phi):
     sphi, cphi = np.sin(phi), np.cos(phi)
-    return np.array([
-        [cphi, -sphi],
-        [sphi,  cphi],
-    ])
+    return np.array(
+        [
+            [cphi, -sphi],
+            [sphi, cphi],
+        ]
+    )
+
 
 def df_int(xi, vq):
     x, y, phi = vq
 
     A_IB_ = A_IB(phi * xi)
-    n = A_IB_ @ np.diag([E * A, G * A]) @ (
-        A_IB_.T @ vq[:2] / length - np.array([1, 0])
-    )
+    n = A_IB_ @ np.diag([E * A, G * A]) @ (A_IB_.T @ vq[:2] / length - np.array([1, 0]))
     m = E * I * phi / length
 
-    K1 = np.array([
-        [1,  0, 0],
-        [0,  1, 0],
-        [y, -x, 1]
-    ])
+    K1 = np.array([[1, 0, 0], [0, 1, 0], [y, -x, 1]])
 
     return K1 @ np.array([*n, m])
 
@@ -78,7 +75,7 @@ def f_int(vq):
     # one point quadrature
     x = np.array([0])
     w = np.array([2])
-    
+
     # # two point quadrature
     # x = np.array([-np.sqrt(1 / 3), np.sqrt(1 / 3)])
     # w = np.array([1, 1])
@@ -132,31 +129,28 @@ def f_int(vq):
 
 def m(t):
     m_max = E * I / length * 2
-    return m_max * (
-        smoothstep2(t, 0, 4)
-        - smoothstep2(t, 4, 4.1)
-    )
+    return m_max * (smoothstep2(t, 0, 4) - smoothstep2(t, 4, 4.1))
     # if t < 4:
     #     return t * m_max
     # else:
     #     return 0.0
 
+
 def f_ext(t, vq):
-    return np.array([
-        0,
-        0,
-        m(t)
-    ])
+    return np.array([0, 0, m(t)])
 
 
 def F(t, vy, vyp):
     vq, vu = vy[:3], vy[3:]
     vqp, vup = vyp[:3], vyp[3:]
 
-    return np.concatenate([
-        vqp - vu,
-        M @ vup + f_int(vq) - f_ext(t, vq),
-    ])
+    return np.concatenate(
+        [
+            vqp - vu,
+            M @ vup + f_int(vq) - f_ext(t, vq),
+        ]
+    )
+
 
 def f(t, vy):
     vq, vu = vy[:3], vy[3:]
@@ -202,7 +196,7 @@ if __name__ == "__main__":
     sol = pside(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     # sol = radau(F, t_span, y0, yp0, rtol=rtol, atol=atol)
     end = time.time()
-    
+
     print(sol)
     success = sol["success"]
     t = sol["t"]

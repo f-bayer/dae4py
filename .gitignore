@@ -2,3 +2,5 @@ build/
 builddir/
 .vscode/
 myvenv/
+*.out
+make*

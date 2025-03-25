@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from dae4py import dassl, pside, radau, radau5
+from dae4py.fortran import dassl, pside, radau, radau5
 
 omega = 3
 eps = 1e3
@@ -10,7 +10,9 @@ la = -20
 phi1 = lambda t: np.arctan(eps * np.cos(omega * t))
 phi2 = lambda t: np.sin(t)
 
-phi1_dot = lambda t: -eps * omega * np.sin(omega * t) / (1 + (eps * np.cos(omega * t))**2)
+phi1_dot = (
+    lambda t: -eps * omega * np.sin(omega * t) / (1 + (eps * np.cos(omega * t)) ** 2)
+)
 phi2_dot = lambda t: np.cos(t)
 
 
@@ -40,6 +42,7 @@ def true_sol(t):
             ]
         ),
     )
+
 
 if __name__ == "__main__":
     # time span

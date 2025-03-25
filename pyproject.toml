@@ -1,13 +1,16 @@
 [build-system]
-build-backend = 'mesonpy'
-requires = ['meson-python']
+build-backend = "mesonpy"
+requires = ["meson-python>=0.16.0"]
 
 [project]
-name = 'dae4py'
-version = '0.0.1'
-description = 'Python wrapper of DAE/IDE fotran solver.'
-readme = 'README.md'
-requires-python = '>=3.8'
+name = "dae4py"
+version = "0.0.1"
+authors = [
+  { name="Jonas Breuling", email="breuling@inm.uni-stuttgart.de" },
+]
+description = "Python implementation/fotran and C wrapper of solvers for differential algebraic equations (DAEs)."
+readme = "README.md"
+requires-python = ">=3.8"
 dependencies = [
   "numpy==1.26.4",
   "scipy==1.15.2",
@@ -17,7 +20,31 @@ dependencies = [
   "pytest>=8.3.5",
   "pytest-cov>=6.0.0",
 ]
-license = {file = 'LICENSE.txt'}
-authors = [
-  {name = 'Jonas Breuling', email = 'jonas.breuling@inm.uni-stuttgart.de'},
+license = {file = "LICENSE.txt"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
 ]
+
+[project.urls]
+homepage = "https://github.com/JonasBreuling/dae4py"
+documentaton = "https://github.com/JonasBreuling/dae4py"
+source = "https://github.com/JonasBreuling/dae4py"
+download = "https://github.com/JonasBreuling/dae4py/releases"
+tracker = "https://github.com/JonasBreuling/dae4py/issues"

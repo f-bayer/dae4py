@@ -1,30 +1,13 @@
-dassl_src = [
-    'dassl/dassl.h',
-    'dassl/src/ddassl.f',
+python_sources = [
+  '__init__.py',
+  'consistent_initial_conditions.py',
+  'dae_problem.py',
+  'benchmark.py',
 ]
 
-radau_src = [
-    'radau/radau.h',
-    'radau/src/radau5.f',
-    'radau/src/radau.f',
-    # 'radau/src/decsol.f',
-    # 'radau/src/dc_decsol.f',
-    # 'radau/src/lapack.f',
-    # 'radau/src/lapackc.f',
-    'radau/src/dc_lapack.f',
-]
-
-pside_src = [
-    'pside/pside.h',
-    'pside/src/pside.f',
-]
-
-py.extension_module(
-    'dae4py',
-    'dae4pymodule.c',
-    dassl_src,
-    pside_src,
-    radau_src,
-    install: true,
-    dependencies: [lapack_dep],
+py.install_sources(
+  python_sources,
+  subdir: 'dae4py'
 )
+
+subdir('fortran')

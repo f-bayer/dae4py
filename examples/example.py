@@ -14,6 +14,7 @@ def F(t, y, yp):
 
     return F
 
+
 if __name__ == "__main__":
     # time span
     t0 = 0
@@ -51,10 +52,12 @@ if __name__ == "__main__":
     print(f"yp.shape: {yp.shape}")
 
     # error
-    diff = y[-1] - np.array([
-        np.exp(-t1) + t1 * np.sin(t1),
-        np.sin(t1),
-    ])
+    diff = y[-1] - np.array(
+        [
+            np.exp(-t1) + t1 * np.sin(t1),
+            np.sin(t1),
+        ]
+    )
     error = np.linalg.norm(diff)
     print(f"error: {error}")
 

@@ -21,23 +21,20 @@ endif()
 # set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${FVERSION}")
 
 # define pside library
-set(PSIDE_MODS dae4py/src/pside/pside.f
-        #        dae4py/src/pside/psided.f
-        #        dae4py/src/pside/psidea.f
-        #        dae4py/src/pside/report.f
+set(PSIDE_MODS dae4py/fortran/pside/src/pside.f
                CACHE INTERNAL "")
 add_library(pside_lib "${PSIDE_MODS}")
 target_link_libraries(pside_lib ${LAPACKBLAS_LIBRARIES})
 
 # add executables
-add_executable(van_der_pol examples/van_der_pol.f90)
+add_executable(van_der_pol examples/fortran/van_der_pol.f90)
 install(TARGETS van_der_pol DESTINATION "bin")
 target_link_libraries(van_der_pol PRIVATE pside_lib)
 
-add_executable(brenan examples/brenan.f90)
+add_executable(brenan examples/fortran/brenan.f90)
 install(TARGETS brenan DESTINATION "bin")
 target_link_libraries(brenan PRIVATE pside_lib)
 
-add_executable(weissinger examples/weissinger.f90)
+add_executable(weissinger examples/fortran/weissinger.f90)
 install(TARGETS weissinger DESTINATION "bin")
 target_link_libraries(weissinger PRIVATE pside_lib)
