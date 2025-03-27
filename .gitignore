@@ -4,3 +4,4 @@ builddir/
 myvenv/
 *.out
 make*
+*.pyc
