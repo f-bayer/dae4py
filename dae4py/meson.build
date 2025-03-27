@@ -11,3 +11,8 @@ py.install_sources(
 )
 
 subdir('fortran')
+subdir('bdf')
+subdir('butcher_tableau')
+subdir('irk')
+subdir('math')
+subdir('radau')

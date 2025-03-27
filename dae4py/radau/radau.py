@@ -336,53 +336,7 @@ def solve_dae_radau(
 
                 scale = atol + np.maximum(np.abs(yn), np.abs(yn1)) * rtol
                 error_norm = np.linalg.norm(error / scale) / scale.size**0.5
-
-                # can the step be accepted
-                if error_norm > 1:
-                    LU_real = None
-                    LU_complex = None
-                else:
-                    step_accepted = True
-
-                    # append to solution arrays
-                    t.append(tn1)
-                    y.append(yn1.copy())
-                    yp.append(ypn1.copy())
-                    Ys.append(Y.copy())
-                    Yps.append(Yp.copy())
-
-                    Z = Y - yn
-                    ZTQT = Z.T @ Q.T
-                    # initial guess for next iteration by extrapolating
-                    # collocation polynomial
-                    if extrapolate_dense_output:
-                        # theta = (tn + hn + c * hn - tn) / hn
-                        # theta = (hn + c * hn) / hn
-                        theta = 1 + c
-                        exponent = np.arange(1, s + 1)[:, None]
-                        theta_hat_vec = exponent * theta ** (exponent - 1)
-                        Yp = (ZTQT @ (theta_hat_vec / hn)).T
-
-                    # dense output
-                    if t_eval is not None:
-                        t_eval_i1 = np.searchsorted(t_eval, tn + hn, side="right")
-                        t_eval_step = t_eval[t_eval_i:t_eval_i1]
-
-                        if t_eval_step.size > 0:
-                            t_eval_i = t_eval_i1
-
-                            theta = (t_eval_step - tn) / hn
-                            exponent = np.arange(1, s + 1)[:, None]
-                            theta_vec = theta**exponent
-                            theta_hat_vec = exponent * theta ** (exponent - 1)
-
-                            y_eval_step = yn[:, None] + ZTQT @ theta_vec
-                            yp_eval_step = ZTQT @ (theta_hat_vec / hn)
-
-                            # t_eval_out.append(t_eval_step)
-                            y_eval.append(y_eval_step.T)
-                            yp_eval.append(yp_eval_step.T)
-
+                
                 # step-size control
                 if error_norm_old is None or hn_old is None or error_norm == 0:
                     multiplier = 1
@@ -397,9 +351,57 @@ def solve_dae_radau(
                 # smooth limiter
                 factor = 1 + kappa * np.arctan((factor - 1) / kappa)
 
-                # new step-size with safety factor
+                # add safety factor
                 safety = 0.9 * (2 * newton_max_iter + 1) / (2 * newton_max_iter + k + 1)
-                hn *= safety * factor
+                factor *= safety
+
+                # can the step be accepted
+                if error_norm > 1:
+                    LU_real = None
+                    LU_complex = None
+                    hn *= factor
+                else:
+                    step_accepted = True
+
+            # append to solution arrays
+            t.append(tn1)
+            y.append(yn1.copy())
+            yp.append(ypn1.copy())
+            Ys.append(Y.copy())
+            Yps.append(Yp.copy())
+
+            # initial guess for next iteration by extrapolating 
+            # collocation polynomial
+            Z = Y - yn
+            ZTQT = Z.T @ Q.T
+            if extrapolate_dense_output:
+                theta = 1 + c * factor
+                exponent = np.arange(1, s + 1)[:, None]
+                theta_hat_vec = exponent * theta ** (exponent - 1)
+                Yp = (ZTQT @ (theta_hat_vec / hn)).T
+
+            # dense output
+            if t_eval is not None:
+                t_eval_i1 = np.searchsorted(t_eval, tn + hn, side="right")
+                t_eval_step = t_eval[t_eval_i:t_eval_i1]
+
+                if t_eval_step.size > 0:
+                    t_eval_i = t_eval_i1
+
+                    theta = (t_eval_step - tn) / hn
+                    exponent = np.arange(1, s + 1)[:, None]
+                    theta_vec = theta**exponent
+                    theta_hat_vec = exponent * theta ** (exponent - 1)
+
+                    y_eval_step = yn[:, None] + ZTQT @ theta_vec
+                    yp_eval_step = ZTQT @ (theta_hat_vec / hn)
+
+                    # t_eval_out.append(t_eval_step)
+                    y_eval.append(y_eval_step.T)
+                    yp_eval.append(yp_eval_step.T)
+
+            # fianlly update the step-size for the next step
+            hn *= factor
 
             # update old values
             tn = tn1

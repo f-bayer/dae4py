@@ -1,4 +1,4 @@
-py3.install_sources([
+py.install_sources([
     '__init__.py',
     'irk.py',
     'irk_richardson.py',
