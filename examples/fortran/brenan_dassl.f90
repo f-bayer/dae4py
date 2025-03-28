@@ -76,9 +76,5 @@ subroutine fun(t, y, yp, delta, ires, rpar, ipar)
     return
 end
 
-! dymmy function: has to return pd = df/dy + cj * df/dyp
 subroutine jac(t, y, yp, pd, cj, rpar, ipar)
-    ! integer ipar(*)
-    ! double precision t, cj, y(2), yp(2), pd(2, 2), rpar(*)
-    ! return
 end
