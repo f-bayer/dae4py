@@ -19,8 +19,7 @@ def solve_dae_radau(
     rtol=1e-3,
     kappa=1.0,
     eta=0.05,
-    newton_iter_embedded=0,
-    # newton_iter_embedded=1,
+    newton_iter_embedded=1,
     extrapolate_dense_output=True,
 ):
     """
@@ -243,9 +242,6 @@ def solve_dae_radau(
                         for i in range(s):
                             Fs[i] = fun(tau[i], Y[i], Yp[i])
 
-                        # if k == 0:
-                        #     newton_scale_F = atol + np.abs(Fs.reshape(-1)) * rtol
-
                         G = TI @ Fs
                         G_real = -G[0]
                         G_complex = np.empty((s_complex, m), dtype=complex)
@@ -267,19 +263,6 @@ def solve_dae_radau(
 
                         Yp += dYp
                         Y += dY
-
-                        # # TODO: This seems to reduce njev, nlu and nlgs at the
-                        # # price of more function evaluations
-                        # # new function evaluation for "classical" termination criterion
-                        # for i in range(s):
-                        #     Fs[i] = fun(tau[i], Y[i], Yp[i])
-
-                        # F_norm = (
-                        #     np.linalg.norm(Fs.reshape(-1) / newton_scale_F) / newton_scale_F.size**0.5
-                        # )
-                        # if F_norm < 1:
-                        #     converged = True
-                        #     break
 
                         dY_norm = (
                             np.linalg.norm(dY / newton_scale) / newton_scale.size**0.5
