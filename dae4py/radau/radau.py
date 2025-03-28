@@ -19,7 +19,8 @@ def solve_dae_radau(
     rtol=1e-3,
     kappa=1.0,
     eta=0.05,
-    newton_iter_embedded=1,
+    newton_iter_embedded=0,
+    # newton_iter_embedded=1,
     extrapolate_dense_output=True,
 ):
     """
@@ -163,6 +164,8 @@ def solve_dae_radau(
     rhs = 1 / np.arange(1, s + 1)
     b_hat_1 = gamma
     rhs[0] -= b_hat_1
+    # TODO: Are these transpositions aligned with the theory of Chapter RK
+    # and implementation of Radau IIA?
     b_hat = np.linalg.solve(Vc_hat.T[:-1, 1:], rhs)
 
     # quadrature weights for implicit embedded method
@@ -317,11 +320,11 @@ def solve_dae_radau(
                 # error estimate
                 match newton_iter_embedded:
                     case 0:
-                        error = hn * (b_hat_1 * ypn + (b_hat - b) @ Yp)
+                        error = hn * ((b - b_hat) @ Yp - b_hat_1 * ypn)
                     case 1:
                         yp_tilde = ((b - b_tilde) @ Yp - b_tilde_1 * ypn) / b_tilde_s2
                         F_tilde = fun(tn1, yn1, yp_tilde)
-                        error = -hn * b_tilde_s2 * solve_lu(LU_real, F_tilde)
+                        error = hn * b_tilde_s2 * solve_lu(LU_real, F_tilde)
                     case _:
                         yp_tilde0 = (
                             -(yn / hn + b_tilde_1 * ypn + b_tilde @ Yp) / b_tilde_s2
@@ -332,11 +335,11 @@ def solve_dae_radau(
                             F_tilde = fun(tn1, y_tilde, yp_tilde)
                             y_tilde -= hn * b_tilde_s2 * solve_lu(LU_real, F_tilde)
 
-                        error = y_tilde - yn1
+                        error = yn1 - y_tilde
 
                 scale = atol + np.maximum(np.abs(yn), np.abs(yn1)) * rtol
                 error_norm = np.linalg.norm(error / scale) / scale.size**0.5
-                
+
                 # step-size control
                 if error_norm_old is None or hn_old is None or error_norm == 0:
                     multiplier = 1
@@ -370,7 +373,7 @@ def solve_dae_radau(
             Ys.append(Y.copy())
             Yps.append(Yp.copy())
 
-            # initial guess for next iteration by extrapolating 
+            # initial guess for next iteration by extrapolating
             # collocation polynomial
             Z = Y - yn
             ZTQT = Z.T @ Q.T
@@ -396,7 +399,6 @@ def solve_dae_radau(
                     y_eval_step = yn[:, None] + ZTQT @ theta_vec
                     yp_eval_step = ZTQT @ (theta_hat_vec / hn)
 
-                    # t_eval_out.append(t_eval_step)
                     y_eval.append(y_eval_step.T)
                     yp_eval.append(yp_eval_step.T)
 
