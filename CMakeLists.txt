@@ -30,9 +30,9 @@ target_link_libraries(dassl_lib ${LAPACKBLAS_LIBRARIES})
 # install(TARGETS van_der_pol DESTINATION "bin")
 # target_link_libraries(van_der_pol PRIVATE dassl_lib)
 
-add_executable(brenan examples/fortran/brenan_dassl.f90)
-install(TARGETS brenan DESTINATION "bin")
-target_link_libraries(brenan PRIVATE dassl_lib)
+add_executable(brenan_dassl examples/fortran/brenan_dassl.f90)
+install(TARGETS brenan_dassl DESTINATION "bin")
+target_link_libraries(brenan_dassl PRIVATE dassl_lib)
 
 # add_executable(weissinger examples/fortran/weissinger.f90)
 # install(TARGETS weissinger DESTINATION "bin")

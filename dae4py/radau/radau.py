@@ -72,6 +72,7 @@ def solve_dae_radau(
         - t_eval (array-like): Time grid (dense output).
         - y_eval (array-like): State (dense output).
         - yp_eval (array-like): Derivative (dense output).
+        - nsteps (int): Number of steps.
         - nfev (int): Number of function evaluations.
         - njev (int): Number of Jacobian evaluations.
         - nlu (int): Number of LU decompositions.
@@ -92,6 +93,7 @@ def solve_dae_radau(
         yp_eval = None
 
     # wrap function calls
+    nsteps = 0
     nfev = 0
     njev = 0
     nlu = 0
@@ -163,8 +165,6 @@ def solve_dae_radau(
     rhs = 1 / np.arange(1, s + 1)
     b_hat_1 = gamma
     rhs[0] -= b_hat_1
-    # TODO: Are these transpositions aligned with the theory of Chapter RK
-    # and implementation of Radau IIA?
     b_hat = np.linalg.solve(Vc_hat.T[:-1, 1:], rhs)
 
     # quadrature weights for implicit embedded method
@@ -350,6 +350,7 @@ def solve_dae_radau(
                     step_accepted = True
 
             # append to solution arrays
+            nsteps += 1
             t.append(tn1)
             y.append(yn1.copy())
             yp.append(ypn1.copy())
@@ -410,6 +411,7 @@ def solve_dae_radau(
         t_eval=t_eval,
         y_eval=np.concatenate(y_eval) if y_eval is not None else y_eval,
         yp_eval=np.concatenate(yp_eval) if y_eval is not None else yp_eval,
+        nsteps=nsteps,
         nfev=nfev,
         njev=njev,
         nlu=nlu,

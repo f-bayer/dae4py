@@ -72,10 +72,10 @@ def solve_dae_IRK(F, y0, yp0, t_span, h, tableau, atol=1e-6, rtol=1e-6):
                 Y = y0 + h * A.dot(Yp)
 
                 # residuals for all stages
-                F = np.zeros((s, m))
+                FF = np.zeros((s, m))
                 for i in range(s):
-                    F[i] = F(T[i], Y[i], Yp[i])
-                return F.flatten()
+                    FF[i] = F(T[i], Y[i], Yp[i])
+                return FF.flatten()
 
             # solve the nonlinear system
             sol = newton(residual, Yp.flatten(), atol=atol, rtol=rtol)
