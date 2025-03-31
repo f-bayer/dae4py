@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 from dae4py.radau import solve_dae_radau
 
 
-def create_grid(Lx, Ly, nx, ny, debug=False):
+def create_grid(Lx, Ly, nx, ny):
     """Generates grid and step sizes."""
 
     # number of nodes
@@ -25,18 +25,6 @@ def create_grid(Lx, Ly, nx, ny, debug=False):
     # coordinate of each grid (cell corner)
     xi2j2 = (np.arange(Nx)) * dx
     yi2j2 = (np.arange(Ny)) * dy
-
-    # visualize mesh for debugging purpose
-    if debug:
-        Xij, Yij = np.meshgrid(xij, yij)
-        Xi2j2, Yi2j2 = np.meshgrid(xi2j2, yi2j2)
-        _, ax = plt.subplots()
-        ax.plot(Xij, Yij, "ok", label="cell centers")
-        ax.plot(Xi2j2, Yi2j2, "xk", label="cell corners")
-        ax.legend()
-        ax.grid()
-        ax.set_aspect("equal")
-        plt.show()
 
     return xij, yij, xi2j2, yi2j2, dx, dy
 
@@ -84,12 +72,7 @@ def apply_boundary_conditions(u_red, v_red, p_red, BC):
     v_bot = BC["v_bot"]
     v_top = BC["v_top"]
 
-    inner_u = BC["inner_u"]
-    inner_v = BC["inner_v"]
-    inner_p = BC["inner_p"]
-
     # Dirichlet boundary conditions for velocities
-    # - u
     if u_left is None:
         u_red[0, :] = u_red[1, :]
     else:
@@ -110,7 +93,6 @@ def apply_boundary_conditions(u_red, v_red, p_red, BC):
     else:
         u_red[:, -1] = 2 * u_top - u_red[:, -2]
 
-    # - v
     if v_left is None:
         v_red[0, :] = v_red[1, :]
     else:
@@ -289,9 +271,6 @@ if __name__ == "__main__":
             "v_bot": 0,
             "v_left": 0,
             "v_right": None,
-            "inner_u": np.s_[1:nx, 1 : ny + 1],
-            "inner_v": np.s_[1 : nx + 1, 1:ny],
-            "inner_p": np.s_[:nx, :ny],
         }
 
     # generate the grid
