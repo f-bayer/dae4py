@@ -56,7 +56,7 @@ def adaptive_radau_IIA(s=3):
     t_span = problem.t_span
     y0 = problem.y0
     yp0 = problem.yp0
-    t_span = (0, 100)
+    t_span = (0, 1000)
 
     # solver options
     t_eval = None
