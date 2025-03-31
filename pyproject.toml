@@ -19,6 +19,7 @@ dependencies = [
   "black>=25.1.0",
   "pytest>=8.3.5",
   "pytest-cov>=6.0.0",
+  "vtk>=9.4.2",
 ]
 license = {file = "LICENSE.txt"}
 classifiers = [

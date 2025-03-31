@@ -5,3 +5,5 @@ myvenv/
 *.out
 make*
 *.pyc
+*.vtu
+*.pvd
