@@ -144,12 +144,6 @@ int main(void)
 }
 
 /*
- *--------------------------------------------------------------------
- * Functions called by IDA
- *--------------------------------------------------------------------
- */
-
-/*
  * Define the system residual function.
  */
 int res(sunrealtype tres, N_Vector yy, N_Vector yp, N_Vector rr,
@@ -166,12 +160,6 @@ int res(sunrealtype tres, N_Vector yy, N_Vector yp, N_Vector rr,
 
   return (0);
 }
-
-/*
- *--------------------------------------------------------------------
- * Private functions
- *--------------------------------------------------------------------
- */
 
 /*
  * Print first lines of output (problem description)
@@ -200,7 +188,6 @@ static void PrintHeader(sunrealtype rtol, N_Vector avtol, N_Vector y, N_Vector y
 /*
  * Print Output
  */
-
 static void PrintOutput(void* mem, sunrealtype t, N_Vector y)
 {
   sunrealtype* yval;
@@ -229,7 +216,6 @@ static void PrintOutput(void* mem, sunrealtype t, N_Vector y)
  *   opt == 2 means function allocates memory so check if returned
  *            NULL pointer
  */
-
 static int check_retval(void* returnvalue, const char* funcname, int opt)
 {
   int* retval;
