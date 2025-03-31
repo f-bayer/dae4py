@@ -34,11 +34,14 @@ class DAEProblem:
         y0: array-like
             The initial values of the unknown variables `y` at time `t0`.
         yp0: array-like
-            The initial values of the derivatives of the unknown variables `y` at time `t0`.
+            The initial values of the derivatives of the unknown variables `y`
+            at time `t0`.
         true_sol: callable
-            A function that returns the true solution `(y, yp)` of the DAE system at a given time `t`.
+            A function that returns the true solution `(y, yp)` of the DAE
+            system at a given time `t`.
         jac: callable, optional, default: None
-            A function that returns the Jacobian of the system with respect to `y` and `yp`.
+            A function that returns the Jacobian of the system with respect to
+            `y` and `yp`.
         parameters: dict, optional, default: {}
             A dictionary of additional parameters required for the system.
         """
