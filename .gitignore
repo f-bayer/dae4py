@@ -7,3 +7,4 @@ make*
 *.pyc
 *.vtu
 *.pvd
+*.txt
