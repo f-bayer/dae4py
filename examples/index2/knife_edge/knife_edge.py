@@ -2,7 +2,7 @@ import numpy as np
 from dae4py.dae_problem import DAEProblem
 
 
-INDEX = 1  # possible options: [0, 1]
+INDEX = 2  # possible options: [1, 2]
 
 m = 1
 Theta = 1
@@ -12,7 +12,6 @@ alpha = 35 / 180 * np.pi
 salpha = np.sin(alpha)
 
 
-# TODO: There seems to be an issue with the derivatives of the analytical solution!
 match INDEX:
     case 1:
 
@@ -23,8 +22,6 @@ match INDEX:
             sphi, cphi = np.sin(phi), np.cos(phi)
 
             F = np.zeros_like(vy, dtype=np.common_type(vy, vyp))
-
-            # Bloch 2005, equation (1.7.6)
             F[0] = xp - u
             F[1] = yp - v
             F[2] = phip - omega
@@ -32,7 +29,6 @@ match INDEX:
             F[4] = m * vp - sphi * lap - m * g * salpha
             F[5] = Theta * omegap
             F[6] = v * sphi - u * cphi
-
             return F
 
         def true_sol(t):
@@ -51,8 +47,8 @@ match INDEX:
             y_dot = v
             phi_dot = omega
 
-            u_dot = -np.sin(Omega * t) * La_dot / m
-            v_dot = -g * salpha + np.cos(Omega * t) * La_dot / m
+            u_dot = -np.cos(phi) * La_dot / m
+            v_dot = g * salpha + np.sin(phi) * La_dot / m
             omega_dot = np.zeros_like(t)
 
             vy = np.array(
@@ -90,7 +86,6 @@ match INDEX:
             sphi, cphi = np.sin(phi), np.cos(phi)
 
             F = np.zeros_like(vy, dtype=np.common_type(vy, vyp))
-
             F[0] = xp - u
             F[1] = yp - v
             F[2] = phip - omega
@@ -98,7 +93,6 @@ match INDEX:
             F[4] = m * vp - sphi * la - m * g * salpha
             F[5] = Theta * omegap
             F[6] = v * sphi - u * cphi
-
             return F
 
         def true_sol(t):
@@ -117,8 +111,8 @@ match INDEX:
             y_dot = v
             phi_dot = omega
 
-            u_dot = -np.sin(Omega * t) * la / m
-            v_dot = -g * salpha + np.cos(Omega * t) * la / m
+            u_dot = -np.cos(phi) * la / m
+            v_dot = g * salpha + np.sin(phi) * la / m
             omega_dot = np.zeros_like(t)
 
             vy = np.array(
@@ -151,7 +145,7 @@ match INDEX:
 problem = DAEProblem(
     name="Knife edge",
     F=F,
-    t_span=(0, np.pi / Omega),
+    t_span=(0, 2 * np.pi / Omega),
     index=INDEX,
     true_sol=true_sol,
 )

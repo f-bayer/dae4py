@@ -44,5 +44,5 @@ def trajectory(s=None, tableau=None):
 
 if __name__ == "__main__":
     trajectory()  # BDF case
-    trajectory(s=2, tableau=gauss_legendre_tableau)
+    trajectory(s=3, tableau=gauss_legendre_tableau)
     trajectory(s=2, tableau=radau_tableau)
