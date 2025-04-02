@@ -10,9 +10,15 @@ py.install_sources(
   subdir: 'dae4py'
 )
 
-subdir('fortran')
 subdir('bdf')
 subdir('butcher_tableau')
 subdir('irk')
 subdir('math')
 subdir('radau')
+
+if fortran_dep.found() and blas_dep.found() and lapack_dep.found()
+  message('Add fortran wrapper since all dependencies are found')
+  subdir('fortran')
+else
+  message('Skipp fortran wrapper since not dependencies are found')
+endif

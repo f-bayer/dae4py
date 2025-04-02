@@ -4,19 +4,24 @@ project(
     'c',
 )
 
-add_languages('fortran')
-
 py_mod = import('python')
 py = py_mod.find_installation(pure: false)
 py_dep = py.dependency()
 
-blas = dependency('blas', required: true)
-lapack = dependency('lapack', required: true)
+fortran_dep = dependency('fortran', required: false)
+if fortran_dep.found()
+  add_languages('fortran')
+endif
 
-_args_blas_lapack = []
-lapack_dep = declare_dependency(
-  dependencies: [blas, lapack],
-  compile_args: _args_blas_lapack
-)
+blas_dep = dependency('blas', required: false)
+lapack_dep = dependency('lapack', required: false)
+
+if blas_dep.found() and lapack_dep.found()
+  _args_blas_lapack = []
+  blas_lapack_dep = declare_dependency(
+    dependencies: [blas_dep, lapack_dep],
+    compile_args: _args_blas_lapack
+  )
+endif
 
 subdir('dae4py')
