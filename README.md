@@ -34,9 +34,17 @@ tbd
     python -m pip install .
     ```
 * windows
-
-    tbd
-
+    
+    make sure the following programs are installed:
+    * [MinGW gcc](https://www.msys2.org/)
+    * [Strawberry Perl](https://strawberryperl.com/)
+    <!-- * [LAPACK](https://www.netlib.org/lapack/#_lapack_version_3_12_1_2) -->
+    ```bash
+    python -m venv myvenv
+    source myvenv/Scripts/activate
+    python -m pip install .
+    ```
+    ... or go the easy way and use WSL2 with Ubuntu
 * MacOS
 
     tbd
