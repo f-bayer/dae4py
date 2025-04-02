@@ -27,5 +27,6 @@ py.extension_module(
     radau_src,
     subdir: 'dae4py',
     install: true,
-    dependencies: [blas_lapack_dep],
+    # dependencies: [blas_lapack_dep],
+    dependencies: [lapack_dep],
 )

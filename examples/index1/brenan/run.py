@@ -4,6 +4,7 @@ from dae4py.irk import solve_dae_IRK
 from dae4py.bdf import solve_dae_BDF
 from dae4py.butcher_tableau import radau_tableau, gauss_legendre_tableau
 from dae4py.radau import solve_dae_radau
+from dae4py.fortran import dassl, pside, radau, radau5
 from brenan import problem
 
 
@@ -64,13 +65,19 @@ def adaptive_radau_IIA(s=3):
     h0 = 1e-3
     atol = 1e-6
     rtol = 1e-6
-    sol = solve_dae_radau(
-        F, y0, yp0, t_span, h0, s=s, atol=atol, rtol=rtol, t_eval=t_eval
-    )
+    # sol = solve_dae_radau(
+    #     F, y0, yp0, t_span, h0, s=s, atol=atol, rtol=rtol, t_eval=t_eval
+    # )
+    # t = sol.t
+    # y = sol.y
+    # yp = sol.yp
+
+    sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
+    t = sol["t"]
+    y = sol["y"]
+    yp = sol["yp"]
+
     print(sol)
-    t = sol.t
-    y = sol.y
-    yp = sol.yp
 
     # compute error
     error = np.linalg.norm(y[-1] - problem.true_sol(t)[0][:, -1])
