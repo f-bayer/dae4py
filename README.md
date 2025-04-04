@@ -1,16 +1,19 @@
 # dae4py - python implementation of solvers for differential algebraic equations (DAE's)
 
-tbd
+This repository is a collection of examples and solvers for the course [Differential Algebraic Equations I & II](https://www.inm.uni-stuttgart.de/lehre/dae/).
 
 ## Fixed step-size implementations
 
-tbd
+Two fixed step-size implementations are given
+
+* [Implicit Runge-Kutta methods](dae4py/irk/irk.py)
+* [Backward differentation formulas (BDF)](dae4py/bdf/bdf.py)
 
 ## Variable step-size Radau IIA methods
 
-tbd
+A variable step-size implementation of the Radau IIA method with odd number of stages is given in [radau.py](dae4py/radau/radau.py).
 
-## Python wrapper for old fortran/C solvers.
+## Python wrapper for old fortran solvers.
 
 *  Four-stage Radau IIA method pside.f of [de Swart, Lioen and van der Veen](https://archimede.uniba.it/~testset/solvers/pside.php).
 * 3 stage Radau IIA method radau.f of [Ernst Hairer](hhttp://www.unige.ch/~hairer/prog/stiff/radau5.f).
@@ -22,7 +25,7 @@ tbd
 
 ## Examples
 
-tbd
+All example discussed in the lecture are implemented here.
 
 ## Install
 

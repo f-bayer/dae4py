@@ -2,14 +2,14 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from dae4py.bdf import solve_dae_BDF
-from dae4py.irk import solve_dae_IRK_generic
+from dae4py.irk import solve_dae_IRK
 from dae4py.butcher_tableau import radau_tableau, gauss_legendre_tableau
 
 
 solvers = [
-    ("RadauIIA(1)", solve_dae_IRK_generic, {"tableau": radau_tableau(1)}),
-    ("RadauIIA(2)", solve_dae_IRK_generic, {"tableau": radau_tableau(2)}),
-    ("RadauIIA(3)", solve_dae_IRK_generic, {"tableau": radau_tableau(3)}),
+    ("RadauIIA(1)", solve_dae_IRK, {"tableau": radau_tableau(1)}),
+    ("RadauIIA(2)", solve_dae_IRK, {"tableau": radau_tableau(2)}),
+    ("RadauIIA(3)", solve_dae_IRK, {"tableau": radau_tableau(3)}),
     # # ("Gauss-Legendre(1)", solve_dae_IRK, {"tableau": gauss_legendre_tableau(1)}),
     # # ("Gauss-Legendre(2)", solve_dae_IRK, {"tableau": gauss_legendre_tableau(2)}),
     # ("Gauss-Legendre(3)", solve_dae_IRK, {"tableau": gauss_legendre_tableau(3)}),

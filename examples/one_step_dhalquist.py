@@ -1,5 +1,5 @@
 import numpy as np
-from dae4py.irk import solve_dae_IRK_generic
+from dae4py.irk import solve_dae_IRK
 from dae4py.butcher_tableau import radau_tableau, gauss_legendre_tableau
 
 
@@ -32,9 +32,9 @@ if __name__ == "__main__":
     atol = rtol = 1e-14
 
     # single step of RadauIIA(2)
-    A, b, c, p, q = radau_tableau(s)
-    sol_RadauIIA2 = solve_dae_IRK_generic(
-        F, y0, yp0, t_span, h, A, b, c, atol=atol, rtol=rtol
+    tableau = radau_tableau(s)
+    sol_RadauIIA2 = solve_dae_IRK(
+        F, y0, yp0, t_span, h, tableau=tableau, atol=atol, rtol=rtol
     )
 
     np.savetxt(
@@ -43,8 +43,8 @@ if __name__ == "__main__":
             [
                 [t0, t1],
                 [y0, sol_RadauIIA2.y[-1][0]],
-                [t0, t0 + c[0] * h],
-                [t0, t0 + c[1] * h],
+                [t0, t0 + tableau.c[0] * h],
+                [t0, t0 + tableau.c[1] * h],
                 [y0, sol_RadauIIA2.Y[-1][0][0]],
                 [y0, sol_RadauIIA2.Y[-1][1][0]],
                 [yp0, sol_RadauIIA2.Yp[-1][0][0]],
@@ -59,9 +59,9 @@ if __name__ == "__main__":
     )
 
     # single step of GaussLegendre(2)
-    A, b, c, p, q = gauss_legendre_tableau(s)
-    sol_GaussLegendre2 = solve_dae_IRK_generic(
-        F, y0, yp0, t_span, h, A, b, c, atol=atol, rtol=rtol
+    tableau = gauss_legendre_tableau(s)
+    sol_GaussLegendre2 = solve_dae_IRK(
+        F, y0, yp0, t_span, h, tableau=tableau, atol=atol, rtol=rtol
     )
 
     np.savetxt(
@@ -70,8 +70,8 @@ if __name__ == "__main__":
             [
                 [t0, t1],
                 [y0, sol_GaussLegendre2.y[-1][0]],
-                [t0, t0 + c[0] * h],
-                [t0, t0 + c[1] * h],
+                [t0, t0 + tableau.c[0] * h],
+                [t0, t0 + tableau.c[1] * h],
                 [y0, sol_GaussLegendre2.Y[-1][0][0]],
                 [y0, sol_GaussLegendre2.Y[-1][1][0]],
                 [yp0, sol_GaussLegendre2.Yp[-1][0][0]],

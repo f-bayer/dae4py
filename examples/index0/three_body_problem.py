@@ -1,18 +1,15 @@
 import numpy as np
 from numpy.linalg import norm
-from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-
-from dae4py.irk import solve_dae_IRK_generic
-from dae4py.butcher_tableau import radau_tableau, gauss_legendre_tableau
+from dae4py.radau import solve_dae_radau
 
 # gravitational constant (normalized)
 G = 1.0
 
 # equal masses for all three bodies
 m1 = m2 = m3 = 1.0
-# m1 += 1e-1  # small mass pertubation
+m1 += 5e-2  # small mass pertubation
 ms = [m1, m2, m3]
 
 # figure-8 initial conditions (from known approximations)
@@ -50,28 +47,18 @@ def F(t, y, yp):
 
 # time span for the simulation
 t_span = (0, 20)
-# t_eval = np.linspace(*t_span, 2000)
+t_eval = np.linspace(*t_span, 2000)
 
 # initial conditions
 y0 = np.concatenate((q0, u0))
 yp0 = rhs(t_span[0], y0)
 
-# solver options
-h = 1e-3
-atol = rtol = 1e-6
-s = 2
-tableau = radau_tableau(s)
-# tableau = gauss_tableau(s)
-
 # solve the system of ODEs
-sol = solve_dae_IRK_generic(F, y0, yp0, t_span, h, tableau, atol=atol, rtol=rtol)
+sol = solve_dae_radau(F, y0, yp0, t_span, t_eval=t_eval)
 
 # extract positions
-q = sol.y[:, :6]
+q = sol.y_eval[:, :6]
 x1, y1, x2, y2, x3, y3 = q.T
-# x1, y1 = sol.y[0], sol.y[1]
-# x2, y2 = sol.y[2], sol.y[3]
-# x3, y3 = sol.y[4], sol.y[5]
 
 # plot the trajectories
 plt.figure(figsize=(8, 6))
@@ -134,7 +121,7 @@ def update(frame):
     return line1, line2, line3, point1, point2, point3
 
 
-frames = len(sol.t)
+frames = len(sol.t_eval)
 ani = FuncAnimation(fig, update, frames=frames, init_func=init, blit=True, interval=10)
 
 plt.show()

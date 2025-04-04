@@ -53,7 +53,6 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots(1, 2)
 
-    # gauss = []
     for s in ss:
         X, Y, Z, abs_R = stability_domains(gauss_legendre_tableau(s))
 
@@ -65,7 +64,6 @@ if __name__ == "__main__":
         ax[0].axis("equal")
 
         vertices = contour.collections[0].get_paths()[0].vertices
-        # gauss.append(vertices)
 
         np.savetxt(
             f"stability_domain_gauss_legendre_s{s}.txt",
@@ -75,7 +73,6 @@ if __name__ == "__main__":
             comments="",
         )
 
-    # radau = []
     for s in ss:
         X, Y, Z, abs_R = stability_domains(radau_tableau(s))
 
@@ -87,7 +84,6 @@ if __name__ == "__main__":
         ax[1].axis("equal")
 
         vertices = contour.collections[0].get_paths()[0].vertices
-        # radau.append(vertices)
 
         np.savetxt(
             f"stability_domain_radau_s{s}.txt",
@@ -97,55 +93,4 @@ if __name__ == "__main__":
             comments="",
         )
 
-    # header = "".join([f"x{s}, y{s}, " for s in ss])[:-2]
-    # data = np.concatenate([gi.T for gi in gauss])
-    # np.savetxt(
-    #     "stability_domain_gauss_legendre.txt",
-    #     data,
-    #     header=header,
-    #     delimiter=", ",
-    #     comments="",
-    # )
-
-    # data = np.concatenate([ri.T for ri in radau])
-    # np.savetxt(
-    #     "stability_domain_radauIIA",
-    #     data,
-    #     header=header,
-    #     delimiter=", ",
-    #     comments="",
-    # )
-
     plt.show()
-
-    # np.savetxt(
-    #     "implicit_Euler_h1.txt",
-    #     np.array([t1, *y1.T]).T,
-    #     header="t, y1",
-    #     delimiter=", ",
-    #     comments="",
-    # )
-
-    # np.savetxt(
-    #     "trapezoidal_h1.txt",
-    #     np.array([t2, *y2.T]).T,
-    #     header="t, y1",
-    #     delimiter=", ",
-    #     comments="",
-    # )
-
-    # np.savetxt(
-    #     "trapezoidal_h2.txt",
-    #     np.array([t3, *y3.T]).T,
-    #     header="t, y1",
-    #     delimiter=", ",
-    #     comments="",
-    # )
-
-    # fig, ax = plt.subplots()
-    # ax.plot(t1, y1, "-ok", label="impl. Euler (h = 1.5 / 40)")
-    # ax.plot(t2, y2, "--xr", label="trapezoidal rule (h = 1.5 / 40)")
-    # ax.plot(t3, y3, "-.sb", label="trapezoidal rule (h = 1.5 / 80)")
-    # ax.grid()
-    # ax.legend()
-    # plt.show()
