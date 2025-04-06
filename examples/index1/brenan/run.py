@@ -57,7 +57,8 @@ def adaptive_radau_IIA(s=3):
     t_span = problem.t_span
     y0 = problem.y0
     yp0 = problem.yp0
-    t_span = (0, 1000)
+    # t_span = (0, 1000)
+    t_span = (0, 50)
 
     # solver options
     t_eval = None
@@ -68,16 +69,20 @@ def adaptive_radau_IIA(s=3):
     # sol = solve_dae_radau(
     #     F, y0, yp0, t_span, h0, s=s, atol=atol, rtol=rtol, t_eval=t_eval
     # )
-    # t = sol.t
-    # y = sol.y
-    # yp = sol.yp
+    sol = pside(F, y0, yp0, t_span, rtol=rtol, atol=atol)
+    t = sol.t
+    y = sol.y
+    yp = sol.yp
 
-    sol = dassl(F, t_span, y0, yp0, rtol=rtol, atol=atol, t_eval=t_eval)
-    t = sol["t"]
-    y = sol["y"]
-    yp = sol["yp"]
+    # # sol = dassl(F, y0, yp0, t_span, rtol=rtol, atol=atol, t_eval=t_eval)
+    # sol = pside(F, y0, yp0, t_span, rtol=rtol, atol=atol)
+    # # t = sol["t"]
+    # # y = sol["y"]
+    # # yp = sol["yp"]
 
     print(sol)
+
+    # exit()
 
     # compute error
     error = np.linalg.norm(y[-1] - problem.true_sol(t)[0][:, -1])
@@ -89,25 +94,29 @@ def adaptive_radau_IIA(s=3):
 
     ax[0, 0].plot(t, y[:, 0], "-ok", label=f"y1")
     ax[0, 0].plot(t_eval, y_true[0], "-b", label=f"y1 true")
-    ax[0, 0].plot(sol.t_eval, sol.y_eval[:, 0], "--r", label=f"y1 eval")
+    if hasattr(sol, "y_eval"):
+        ax[0, 0].plot(sol.t_eval, sol.y_eval[:, 0], "--r", label=f"y1 eval")
     ax[0, 0].grid()
     ax[0, 0].legend()
 
     ax[1, 0].plot(t, y[:, 1], "-ok", label=f"y2")
     ax[1, 0].plot(t_eval, y_true[1], "-b", label=f"y2 true")
-    ax[1, 0].plot(sol.t_eval, sol.y_eval[:, 1], "--r", label=f"y2 eval")
+    if hasattr(sol, "y_eval"):
+        ax[1, 0].plot(sol.t_eval, sol.y_eval[:, 1], "--r", label=f"y2 eval")
     ax[1, 0].grid()
     ax[1, 0].legend()
 
     ax[0, 1].plot(t, yp[:, 0], "-ok", label=f"yp1")
     ax[0, 1].plot(t_eval, yp_true[0], "-b", label=f"yp1 true")
-    ax[0, 1].plot(sol.t_eval, sol.yp_eval[:, 0], "--r", label=f"yp1 eval")
+    if hasattr(sol, "y_eval"):
+        ax[0, 1].plot(sol.t_eval, sol.yp_eval[:, 0], "--r", label=f"yp1 eval")
     ax[0, 1].grid()
     ax[0, 1].legend()
 
     ax[1, 1].plot(t, yp[:, 1], "-ok", label=f"yp2")
     ax[1, 1].plot(t_eval, yp_true[1], "-b", label=f"yp2 true")
-    ax[1, 1].plot(sol.t_eval, sol.yp_eval[:, 1], "--r", label=f"yp2 eval")
+    if hasattr(sol, "y_eval"):
+        ax[1, 1].plot(sol.t_eval, sol.yp_eval[:, 1], "--r", label=f"yp2 eval")
     ax[1, 1].grid()
     ax[1, 1].legend()
 

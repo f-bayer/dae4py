@@ -7,12 +7,12 @@ from brenan import problem
 
 
 solvers = [
-    (solve_dae_radau, {"s": 3}),
-    (solve_dae_radau, {"s": 5}),
-    (solve_dae_radau, {"s": 7}),
+    # (solve_dae_radau, {"s": 3}),
+    # (solve_dae_radau, {"s": 5}),
+    # (solve_dae_radau, {"s": 7}),
     # TODO: Spot the segfault error
     # (dassl, {}),
-    # (pside, {}),
+    (pside, {}),
     # (radau, {}),
     # (radau5, {}),
 ]

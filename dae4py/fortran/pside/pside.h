@@ -271,44 +271,108 @@ static PyObject* pside(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_XDECREF(yp0_obj);
     Py_XDECREF(y_array);
     Py_XDECREF(yp_array);
-    
-    return Py_BuildValue(
-        "{s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i}",
-        "success", Py_True,
-        "t", PyArray_Return(PyArray_FromAny(
-                                global_pside_params.t_sol,    // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
-                            ),
-        "y", PyArray_Return(PyArray_FromAny(
-                                global_pside_params.y_sol,    // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
-                            ),
-        "yp", PyArray_Return(PyArray_FromAny(
-                                global_pside_params.yp_sol,   // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
-                            ),
-        "ncalls", iwork[9], // IWORK(10) number of successive PSIDE calls
-        "nf", iwork[10], // IWORK(11) number of function evaluations
-        "njac", iwork[11], // IWORK(12) number of jacobian evaluations
-        "nlu", iwork[12], // IWORK(13) number of LU-decompositions
-        "nsolve", iwork[13], // IWORK(14) number of forward/backward solves
-        "nsteps", iwork[14], // IWORK(15) total number of steps
-        "nrejerror", iwork[15], // IWORK(16) rejected steps due to error control
-        "nrejnewton", iwork[16], // IWORK(17) rejected steps due to Newton failure
-        "nrejgroth", iwork[17] // IWORK(18) rejected steps due to excessive growth of solution
+
+    PyObject* results_dict = PyDict_New();
+    PyDict_SetItemString(results_dict, "success", Py_True);
+    PyDict_SetItemString(
+        results_dict, 
+        "t", 
+        PyArray_FromAny(
+            global_pside_params.t_sol,  // Input object
+            NULL,                       // Desired data type (None means let NumPy decide)
+            0,                          // Minimum number of dimensions
+            0,                          // Maximum number of dimensions
+            NPY_ARRAY_DEFAULT,          // Flags
+            NULL)                       // Array description (NULL means default)
     );
+    PyDict_SetItemString(
+        results_dict, 
+        "y", 
+        PyArray_FromAny(
+            global_pside_params.y_sol,  // Input object
+            NULL,                       // Desired data type (None means let NumPy decide)
+            0,                          // Minimum number of dimensions
+            0,                          // Maximum number of dimensions
+            NPY_ARRAY_DEFAULT,          // Flags
+            NULL)                       // Array description (NULL means default)
+    );
+    PyDict_SetItemString(
+        results_dict, 
+        "yp", 
+        PyArray_FromAny(
+            global_pside_params.yp_sol, // Input object
+            NULL,                       // Desired data type (None means let NumPy decide)
+            0,                          // Minimum number of dimensions
+            0,                          // Maximum number of dimensions
+            NPY_ARRAY_DEFAULT,          // Flags
+            NULL)                       // Array description (NULL means default)
+    );
+    PyDict_SetItemString(results_dict, "ncalls", PyLong_FromLong(iwork[9])); // IWORK(10) number of successive PSIDE calls
+    PyDict_SetItemString(results_dict, "nf", PyLong_FromLong(iwork[10])); // IWORK(11) number of function evaluations
+    PyDict_SetItemString(results_dict, "njac", PyLong_FromLong(iwork[11])); // IWORK(12) number of jacobian evaluations
+    PyDict_SetItemString(results_dict, "nlu", PyLong_FromLong(iwork[12])); // IWORK(13) number of LU-decompositions
+    PyDict_SetItemString(results_dict, "nsolve", PyLong_FromLong(iwork[13])); // IWORK(14) number of forward/backward solves
+    PyDict_SetItemString(results_dict, "nsteps", PyLong_FromLong(iwork[14])); // IWORK(15) total number of steps
+    PyDict_SetItemString(results_dict, "nrejerror", PyLong_FromLong(iwork[15])); // IWORK(16) rejected steps due to error control
+    PyDict_SetItemString(results_dict, "nrejnewton", PyLong_FromLong(iwork[16])); // IWORK(17) rejected steps due to Newton failure
+    PyDict_SetItemString(results_dict, "nrejgroth", PyLong_FromLong(iwork[17])); // IWORK(18) rejected steps due to excessive growth of solution
+
+    PyObject* util_module = PyImport_ImportModule("scipy._lib._util");
+    if (util_module == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyImport_ImportModule('scipy._lib._util') failed");
+    }
+
+    PyObject* rich_result_class = PyObject_GetAttrString(util_module, "_RichResult");
+    Py_DECREF(util_module);
+    if (rich_result_class == NULL) {
+        PyErr_SetString(PyExc_ValueError, "PyObject_GetAttrString(util_module, '_RichResult') failed");
+    }
+
+    PyObject* args_result = PyTuple_Pack(1, results_dict);
+    PyObject* result = PyObject_CallObject(rich_result_class, args_result);
+    Py_DECREF(args_result);
+    Py_DECREF(rich_result_class);
+    Py_DECREF(results_dict);
+
+    return result;
+
+    // return Py_BuildValue(
+    //     "{s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i}",
+    //     "success", Py_True,
+    //     "t", PyArray_Return(PyArray_FromAny(
+    //                             global_pside_params.t_sol,    // Input object
+    //                             NULL,                   // Desired data type (None means let NumPy decide)
+    //                             0,                      // Minimum number of dimensions
+    //                             0,                      // Maximum number of dimensions
+    //                             NPY_ARRAY_DEFAULT,      // Flags
+    //                             NULL)                   // Array description (NULL means default)
+    //                         ),
+    //     "y", PyArray_Return(PyArray_FromAny(
+    //                             global_pside_params.y_sol,    // Input object
+    //                             NULL,                   // Desired data type (None means let NumPy decide)
+    //                             0,                      // Minimum number of dimensions
+    //                             0,                      // Maximum number of dimensions
+    //                             NPY_ARRAY_DEFAULT,      // Flags
+    //                             NULL)                   // Array description (NULL means default)
+    //                         ),
+    //     "yp", PyArray_Return(PyArray_FromAny(
+    //                             global_pside_params.yp_sol,   // Input object
+    //                             NULL,                   // Desired data type (None means let NumPy decide)
+    //                             0,                      // Minimum number of dimensions
+    //                             0,                      // Maximum number of dimensions
+    //                             NPY_ARRAY_DEFAULT,      // Flags
+    //                             NULL)                   // Array description (NULL means default)
+    //                         ),
+    //     "ncalls", iwork[9], // IWORK(10) number of successive PSIDE calls
+    //     "nf", iwork[10], // IWORK(11) number of function evaluations
+    //     "njac", iwork[11], // IWORK(12) number of jacobian evaluations
+    //     "nlu", iwork[12], // IWORK(13) number of LU-decompositions
+    //     "nsolve", iwork[13], // IWORK(14) number of forward/backward solves
+    //     "nsteps", iwork[14], // IWORK(15) total number of steps
+    //     "nrejerror", iwork[15], // IWORK(16) rejected steps due to error control
+    //     "nrejnewton", iwork[16], // IWORK(17) rejected steps due to Newton failure
+    //     "nrejgroth", iwork[17] // IWORK(18) rejected steps due to excessive growth of solution
+    // );
 
     fail:
         free(rwork);
