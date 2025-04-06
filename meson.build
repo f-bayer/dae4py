@@ -2,10 +2,6 @@
 project(
     'dae4py', 
     'c',
-    default_options: [
-      'blas=openblas',
-      'lapack=openblas'
-    ],
 )
 
 py_mod = import('python')

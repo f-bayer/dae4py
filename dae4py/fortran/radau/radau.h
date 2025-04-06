@@ -273,10 +273,10 @@ static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, ra
     int idid;
 
     // parse inputs
-    static char *kwlist[] = {"f", "t_span", "y0", "yp0", // mandatory arguments
+    static char *kwlist[] = {"f", "y0", "yp0", "t_span", // mandatory arguments
                              "rtol", "atol", "J", NULL}; // optional arguments and NULL termination
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOOO", kwlist, 
-                                     &f_obj, &t_span_obj, &u_obj, &v_obj, // positional arguments
+                                     &f_obj, &u_obj, &v_obj, &t_span_obj, // positional arguments
                                      &rtol, &atol, &J_obj)) // optional arguments
         return NULL;
 

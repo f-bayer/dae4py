@@ -166,10 +166,10 @@ static PyObject* pside(PyObject *self, PyObject *args, PyObject *kwargs)
     int idid;
 
     // parse inputs
-    static char *kwlist[] = {"f", "t_span", "y0", "yp0", // mandatory arguments
+    static char *kwlist[] = {"f", "y0", "yp0", "t_span", // mandatory arguments
                              "rtol", "atol", "J", "M", NULL}; // optional arguments and NULL termination
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOO", kwlist, 
-                                     &f_obj, &t_span_obj, &y0_obj, &yp0_obj, // positional arguments
+                                     &f_obj, &y0_obj, &yp0_obj, &t_span_obj, // positional arguments
                                      &rtol, &atol, &J_obj, &M_obj)) // optional arguments
         return NULL;
 

@@ -179,10 +179,10 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     int idid;
 
     // parse inputs
-    static char *kwlist[] = {"f", "t_span", "y0", "yp0", // mandatory arguments
+    static char *kwlist[] = {"f", "y0", "yp0", "t_span", // mandatory arguments
                              "rtol", "atol", "J", "t_eval", NULL}; // optional arguments and NULL termination
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOO", kwlist, 
-                                     &f_obj, &t_span_obj, &y_obj, &yp_obj, // positional arguments
+                                     &f_obj, &y_obj, &yp_obj, &t_span_obj, // positional arguments
                                      &rtol, &atol, &J_obj, &t_eval_obj)) // optional arguments
         return NULL;
 
