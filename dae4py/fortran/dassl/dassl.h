@@ -2,6 +2,8 @@
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
 #include "numpy/arrayobject.h"
 
+#include "../common.h"
+
 #ifdef HAVE_BLAS_ILP64
 #define F_INT npy_int64
 #define F_INT_NPY NPY_INT64
@@ -108,37 +110,9 @@ void dassl_f(double *t, double *y, double *yp,
         return;
 }
 
-
 void dassl_jac(F_INT ldj, F_INT neqn, F_INT nlj, F_INT nuj, 
              double *t, double *y, double *ydot, double *J, 
              double *rpar, F_INT *ipar){}
-
-static PyObject* linspace(double start, double stop, int num) {
-    // check for valid number of points
-    if (num <= 0) {
-        PyErr_SetString(PyExc_ValueError, "linspace: Number of points must be greater than 0");
-        return NULL;
-    }
-
-    // calculate the step-size
-    double step = (num > 1) ? (stop - start) / (num - 1) : 0.0;
-
-    // create a NumPy array of doubles
-    npy_intp dims[1] = {num};  // dimension of the array
-    PyObject* array = PyArray_SimpleNew(1, dims, NPY_DOUBLE);  // 1D array of type double
-    if (!array) {
-        PyErr_SetString(PyExc_RuntimeError, "linspace: Failed to create NumPy array");
-        return NULL;
-    }
-
-    // Fill the array with linearly spaced values
-    double* data = (double*)PyArray_DATA((PyArrayObject*)array);
-    for (int i = 0; i < num; i++) {
-        data[i] = start + i * step;
-    }
-
-    return array;
-}
 
 static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -160,7 +134,6 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     double rtol = 1.0e-6;
     double atol = 1.0e-3;
     double t, t1;
-    double t_init;
     double *t_eval_ptr, *y, *yp;
 
     int nt_eval;
@@ -342,47 +315,20 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_XDECREF(y_array);
     Py_XDECREF(yp_array);
     
-    // TODO: Return _RichRestul
-    return Py_BuildValue(
-        "{s:N,s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
-        "success", success ? Py_True : Py_False,
-        "order", PyArray_Return(PyArray_FromAny(
-                                order_sol,              // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
-                            ),
-        "t", PyArray_Return(PyArray_FromAny(
-                                t_sol,                  // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
-                            ),
-        "y", PyArray_Return(PyArray_FromAny(
-                                y_sol,                  // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
-                            ),
-        "yp", PyArray_Return(PyArray_FromAny(
-                                yp_sol,                 // Input object
-                                NULL,                   // Desired data type (None means let NumPy decide)
-                                0,                      // Minimum number of dimensions
-                                0,                      // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,      // Flags
-                                NULL)                   // Array description (NULL means default)
-                            ),
-        "nsteps", iwork[10], // IWORK(11) total number of steps
-        "nf", iwork[11], // IWORK(12) number of function evaluations
-        "njac", iwork[12], // IWORK(13) number of jacobian evaluations
-        "nrejerror", iwork[13], // IWORK(14) total number of error test failures
-        "nrejnewton", iwork[14] // IWORK(15) total number of convergence test failures
+    return rich_result(
+        Py_BuildValue(
+            "{s:N,s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
+            "success", success ? Py_True : Py_False,
+            "order", PyArray_FromAny(order_sol, NULL, 0, 0, NPY_ARRAY_DEFAULT, NULL),
+            "t", PyArray_FromAny(t_sol, NULL, 0, 0, NPY_ARRAY_DEFAULT, NULL),
+            "y", PyArray_FromAny(y_sol, NULL, 0, 0, NPY_ARRAY_DEFAULT, NULL),
+            "yp", PyArray_FromAny(yp_sol, NULL, 0, 0, NPY_ARRAY_DEFAULT, NULL),
+            "nsteps", iwork[10], // IWORK(11) total number of steps
+            "nf", iwork[11], // IWORK(12) number of function evaluations
+            "njac", iwork[12], // IWORK(13) number of jacobian evaluations
+            "nrejerror", iwork[13], // IWORK(14) total number of error test failures
+            "nrejnewton", iwork[14] // IWORK(15) total number of convergence test failures
+        )
     );
 
     fail:

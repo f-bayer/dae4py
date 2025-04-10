@@ -71,14 +71,17 @@ def adaptive_radau_IIA(s=3):
     #     F, y0, yp0, t_span, h0, s=s, atol=atol, rtol=rtol, t_eval=t_eval
     # )
     # # sol = pside(F, y0, yp0, t_span, rtol=rtol, atol=atol)
-    # t = sol.t
-    # y = sol.y
-    # yp = sol.yp
+    # sol = dassl(F, y0, yp0, t_span, rtol=rtol, atol=atol, t_eval=t_eval)
+    sol = radau(F, y0, yp0, t_span, rtol=rtol, atol=atol)
+    # sol = radau5(F, y0, yp0, t_span, rtol=rtol, atol=atol)
+    t = sol.t
+    y = sol.y
+    yp = sol.yp
 
-    sol = dassl(F, y0, yp0, t_span, rtol=rtol, atol=atol, t_eval=t_eval)
-    t = sol["t"]
-    y = sol["y"]
-    yp = sol["yp"]
+    # sol = dassl(F, y0, yp0, t_span, rtol=rtol, atol=atol, t_eval=t_eval)
+    # t = sol["t"]
+    # y = sol["y"]
+    # yp = sol["yp"]
 
     print(sol)
 

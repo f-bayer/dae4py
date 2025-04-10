@@ -20,6 +20,15 @@ def F(t, vy, vyp, index=3):
     R[3] = m * v_dot - 2 * y * la + m * g
 
     match index:
+        case 3:
+            R[4] = x**2 + y**2 - l**2
+
+        case 2:
+            R[4] = 2 * (x * u + y * v)
+
+        case 1:
+            R[4] = 2 * (x * u_dot + u**2 + y * v_dot + v**2)
+
         case 0:
             R[4] = la_p - (
                 m / 2 * (v * g - 2 * (u * u_dot + v * v_dot)) / (x**2 + y**2)
@@ -29,15 +38,6 @@ def F(t, vy, vyp, index=3):
                 * (x * u + y * v)
                 / (x**2 + y**2) ** 2
             )
-
-        case 1:
-            R[4] = 2 * (x * u_dot + u**2 + y * v_dot + v**2)
-
-        case 2:
-            R[4] = 2 * (x * u + y * v)
-
-        case 3:
-            R[4] = x**2 + y**2 - 1
 
     return R
 

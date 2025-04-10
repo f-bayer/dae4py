@@ -10,12 +10,12 @@ from brenan import problem
 
 solvers = [
     (solve_dae_radau, {"s": 3}),
-    (solve_dae_radau, {"s": 5}),
+    # (solve_dae_radau, {"s": 5}),
     # (solve_dae_radau, {"s": 7}),
     (dassl, {}),
     # (pside, {}),
-    # (radau, {}),
-    # (radau5, {}),
+    (radau, {}),
+    (radau5, {}),
 ]
 
 

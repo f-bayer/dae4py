@@ -2,6 +2,8 @@
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
 #include "numpy/arrayobject.h"
 
+#include "../common.h"
+
 #ifdef HAVE_BLAS_ILP64
 #define F_INT npy_int64
 #define F_INT_NPY NPY_INT64
@@ -15,6 +17,7 @@ typedef struct _radau_globals {
     PyObject *t_sol;
     PyObject *y_sol;
     PyObject *yp_sol;
+    PyObject *t_eval;
 } radau_params;
 
 static radau_params global_radau_params = {NULL, NULL, NULL, NULL};
@@ -25,14 +28,17 @@ static radau_params global_radau_params = {NULL, NULL, NULL, NULL};
     #else
         #define RADAU5  RADAU5_
         #define RADAU  RADAU_
+        #define CONTRA  CONTRA_
     #endif
 #else
     #if defined(NO_APPEND_FORTRAN)
         #define RADAU5  radau5
         #define RADAU  radau
+        #define CONTRA  contra
     #else
         #define RADAU5  radau5_
         #define RADAU  radau_
+        #define CONTRA  contra_
     #endif
 #endif
 
@@ -44,8 +50,12 @@ typedef void radau_jac_t(double *t, double *y, double *ydot,
 typedef void radau_mas_t(F_INT *neq, double *am, F_INT *lmas,
                          double *rpar, F_INT *ipar);
 
+typedef void contra_t(F_INT *i, double *s, double *cont, F_INT *lrc);
+extern contra_t CONTRA;
+
 typedef void radau_solout_t(F_INT *nr, double *told, double *t, double *y, 
-                            double *contr, F_INT *lrc, F_INT *neqn,
+                            // double *contr, F_INT *lrc, F_INT *neqn,
+                            contra_t contr, F_INT *lrc, F_INT *neqn,
                             double *rpar, F_INT *ipar, F_INT *itrn);
 
 // function signature of radau calls
@@ -60,8 +70,8 @@ typedef void radau_t(F_INT *neq, radau_f_t *f, double *t,
                      double *rwork, F_INT *lwork, F_INT *iwork, F_INT *liwork, 
                      double *rpar, F_INT *ipar, F_INT *idid);
 
-radau_t RADAU;
-radau_t RADAU5;
+extern radau_t RADAU;
+extern radau_t RADAU5;
 
 // f(t, y) = [
 //  u' = v
@@ -215,6 +225,17 @@ void radau_solout(F_INT *nr, double *told, double *t, double *y,
         goto fail;
     }
 
+    if (global_radau_params.t_eval != Py_None) {
+        PyArrayObject *t_eval_array = NULL;
+        t_eval_array = (PyArrayObject *) PyArray_ContiguousFromObject(global_radau_params.t_eval, NPY_DOUBLE, 0, 0);
+        if (t_eval_array == NULL) {
+            PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(t_eval_obj_in, NPY_DOUBLE, 0, 0) failed");
+            goto fail;
+        }
+        double *t_eval_ptr = (double *) PyArray_DATA(t_eval_array);
+        int nt_eval = PyArray_Size((PyObject *) t_eval_array);
+    }
+
     PyList_Append(global_radau_params.t_sol, PyFloat_FromDouble(*t));
     PyList_Append(global_radau_params.y_sol, PyArray_NewCopy(u_array, NPY_ANYORDER));
     PyList_Append(global_radau_params.yp_sol, PyArray_NewCopy(v_array, NPY_ANYORDER));
@@ -229,24 +250,25 @@ void radau_solout(F_INT *nr, double *told, double *t, double *y,
 
 // TODO:
 // - add dense output for solout
-// - add possibility for index 2 and 3 varibles to iwork
-// - allow for more options in iwork
 static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, radau_t *radau_)
 {
     PyObject *f_obj = NULL;
     PyObject *J_obj = Py_None;
     PyObject *t_span_obj = NULL;
+    PyObject *t_eval_obj = Py_None;
     PyObject *u_obj = NULL;
     PyObject *v_obj = NULL;
+    PyArrayObject *t_eval_array = NULL;
     PyArrayObject *u_array = NULL;
     PyArrayObject *v_array = NULL;
 
-    double rtol = 1.0e-3;
-    double atol = 1.0e-6;
+    double rtol = 1.0e-6;
+    double atol = 1.0e-3;
     double h = 1e-3;
     double t, t1;
-    double *u, *v, *y;
+    double *t_eval_ptr, *u, *v, *y;
 
+    int t_eval_offset = 0;
     int success;
 
     int n;
@@ -274,10 +296,10 @@ static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, ra
 
     // parse inputs
     static char *kwlist[] = {"f", "y0", "yp0", "t_span", // mandatory arguments
-                             "rtol", "atol", "J", NULL}; // optional arguments and NULL termination
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOOO", kwlist, 
+                             "rtol", "atol", "J", "t_eval", NULL}; // optional arguments and NULL termination
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOO", kwlist, 
                                      &f_obj, &u_obj, &v_obj, &t_span_obj, // positional arguments
-                                     &rtol, &atol, &J_obj)) // optional arguments
+                                     &rtol, &atol, &J_obj, &t_eval_obj)) // optional arguments
         return NULL;
 
     // check if function and Jacobians (if present) are callable
@@ -300,7 +322,20 @@ static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, ra
         PyErr_SetString(PyExc_ValueError, "`t1` must larger than `t0`.");
     }
 
+    // check if t_eval is present
+    global_radau_params.t_eval = t_eval_obj;
+    // if (t_eval_obj != Py_None) {
+    //     t_eval_array = (PyArrayObject *) PyArray_ContiguousFromObject(t_eval_obj, NPY_DOUBLE, 0, 0);
+    //     if (t_eval_array == NULL) {
+    //         PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(t_eval_obj_in, NPY_DOUBLE, 0, 0) failed");
+    //         goto fail;
+    //     }
+    //     t_eval_ptr = (double *) PyArray_DATA(t_eval_array);
+    //     nt_eval = PyArray_Size((PyObject *) t_eval_array);
+    // }
+
     // initial conditions
+    u_obj = PyArray_NewCopy(u_obj, NPY_ANYORDER); // copy ensures that we do not alter u
     u_array = (PyArrayObject *) PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0);
     if (u_array == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(u_obj, NPY_DOUBLE, 0, 0) failed");
@@ -314,6 +349,7 @@ static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, ra
     n = PyArray_Size((PyObject *) u_array);
     neqn = 2 * n;
 
+    v_obj = PyArray_NewCopy(v_obj, NPY_ANYORDER); // copy ensures that we do not alter u
     v_array = (PyArrayObject *) PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0);
     if (v_array == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(v_obj, NPY_DOUBLE, 0, 0) failed");
@@ -387,7 +423,7 @@ static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, ra
     mljac = neqn;
     mujac = neqn;
     
-    // banded user-defined jacobian
+    // banded user-defined mass matrix
     imas = 1;
     mlmas = 1;
     mumas = 1;
@@ -418,57 +454,32 @@ static PyObject* radau_call(PyObject *self, PyObject *args, PyObject *kwargs, ra
     free(rwork);
     free(iwork);
     free(y);
-    Py_XDECREF(f_obj);
-    Py_XDECREF(J_obj);
-    Py_XDECREF(t_span_obj);
     Py_XDECREF(u_obj);
     Py_XDECREF(v_obj);
     Py_XDECREF(u_array);
     Py_XDECREF(v_array);
     
-    return Py_BuildValue(
-        "{s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
-        "success", success ? Py_True : Py_False,
-        "t", PyArray_Return(PyArray_FromAny(
-                                global_radau_params.t_sol, // Input object
-                                NULL,                      // Desired data type (None means let NumPy decide)
-                                0,                         // Minimum number of dimensions
-                                0,                         // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,         // Flags
-                                NULL)                      // Array description (NULL means default)
-                            ),
-        "y", PyArray_Return(PyArray_FromAny(
-                                global_radau_params.y_sol, // Input object
-                                NULL,                      // Desired data type (None means let NumPy decide)
-                                0,                         // Minimum number of dimensions
-                                0,                         // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,         // Flags
-                                NULL)                      // Array description (NULL means default)
-                            ),
-        "yp", PyArray_Return(PyArray_FromAny(
-                                global_radau_params.yp_sol, // Input object
-                                NULL,                       // Desired data type (None means let NumPy decide)
-                                0,                          // Minimum number of dimensions
-                                0,                          // Maximum number of dimensions
-                                NPY_ARRAY_DEFAULT,          // Flags
-                                NULL)                       // Array description (NULL means default)
-                            ),
-        "nf", iwork[13],
-        "njac", iwork[14],
-        "nsteps", iwork[15],
-        "naccpt", iwork[16],
-        "nrejerror", iwork[17],
-        "nlu", iwork[18],
-        "nsol", iwork[19]
+    return rich_result(
+        Py_BuildValue(
+            "{s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
+            "success", success ? Py_True : Py_False,
+            "t", PyArray_FromAny(global_radau_params.t_sol, NULL, 0, 0, NPY_ARRAY_DEFAULT, NULL),
+            "y", PyArray_FromAny(global_radau_params.y_sol, NULL, 0, 0, NPY_ARRAY_DEFAULT, NULL),
+            "yp", PyArray_FromAny(global_radau_params.yp_sol, NULL, 0, 0, NPY_ARRAY_DEFAULT, NULL),
+            "nf", iwork[13],
+            "njac", iwork[14],
+            "nsteps", iwork[15],
+            "naccpt", iwork[16],
+            "nrejerror", iwork[17],
+            "nlu", iwork[18],
+            "nsol", iwork[19]
+        )
     );
 
     fail:
         free(rwork);
         free(iwork);
         free(y);
-        Py_XDECREF(f_obj);
-        Py_XDECREF(J_obj);
-        Py_XDECREF(t_span_obj);
         Py_XDECREF(u_obj);
         Py_XDECREF(v_obj);
         Py_XDECREF(u_array);
