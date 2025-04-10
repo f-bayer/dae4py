@@ -5,14 +5,15 @@ from dae4py.radau import solve_dae_radau
 from dae4py.fortran import dassl, pside, radau, radau5
 from brenan import problem
 
+# PYTHONMALLOC=malloc valgrind --leak-check=yes --track-origins=yes --log-file=valgrind-log.txt python examples/index1/brenan/work_precision.py
+
 
 solvers = [
-    # (solve_dae_radau, {"s": 3}),
-    # (solve_dae_radau, {"s": 5}),
+    (solve_dae_radau, {"s": 3}),
+    (solve_dae_radau, {"s": 5}),
     # (solve_dae_radau, {"s": 7}),
-    # TODO: Spot the segfault error
-    # (dassl, {}),
-    (pside, {}),
+    (dassl, {}),
+    # (pside, {}),
     # (radau, {}),
     # (radau5, {}),
 ]

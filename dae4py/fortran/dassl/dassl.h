@@ -38,12 +38,12 @@ typedef void dassl_jac_t(double *t, double *y, double *ydot,
                          double *J, double* cj, 
                          double *rpar, F_INT *ipar);
 
-void DDASSL(dassl_f_t *res, F_INT *neq, double *t, 
-           double *y, double *yp, double *tout, 
-           F_INT *info, double *rtol, double *atol,
-           F_INT *idid, double *rwork, F_INT *lrw,
-           F_INT *iwork, F_INT *liw, double *rpar, 
-           F_INT *ipar);
+extern void DDASSL(dassl_f_t *res, F_INT *neq, double *t, 
+                   double *y, double *yp, double *tout, 
+                   F_INT *info, double *rtol, double *atol,
+                   F_INT *idid, double *rwork, F_INT *lrw,
+                   F_INT *iwork, F_INT *liw, double *rpar, 
+                   F_INT *ipar);
 
 void dassl_f(double *t, double *y, double *yp, 
              double *f, F_INT *ierr, 
@@ -145,7 +145,8 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *f_obj = NULL;
     PyObject *J_obj = Py_None;
     PyObject *t_span_obj = NULL;
-    PyObject *t_eval_obj = Py_None;
+    PyObject *t_eval_obj_in = Py_None;
+    PyObject *t_eval_obj = NULL;
     PyObject *y_obj = NULL;
     PyObject *yp_obj = NULL;
     PyObject *order_sol;
@@ -159,6 +160,7 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     double rtol = 1.0e-6;
     double atol = 1.0e-3;
     double t, t1;
+    double t_init;
     double *t_eval_ptr, *y, *yp;
 
     int nt_eval;
@@ -183,7 +185,7 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
                              "rtol", "atol", "J", "t_eval", NULL}; // optional arguments and NULL termination
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOO|ddOO", kwlist, 
                                      &f_obj, &y_obj, &yp_obj, &t_span_obj, // positional arguments
-                                     &rtol, &atol, &J_obj, &t_eval_obj)) // optional arguments
+                                     &rtol, &atol, &J_obj, &t_eval_obj_in)) // optional arguments
         return NULL;
 
     // check if function and Jacobians (if present) are callable
@@ -207,18 +209,21 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 
     // check if t_eval is present, otherwise create array with 500 linear spaced points
-    if (t_eval_obj == Py_None) {
+    if (t_eval_obj_in == Py_None) {
         t_eval_obj = linspace(t, t1, 500);
+    } else {
+        t_eval_obj = t_eval_obj_in;
     }
     t_eval_array = (PyArrayObject *) PyArray_ContiguousFromObject(t_eval_obj, NPY_DOUBLE, 0, 0);
     if (t_eval_array == NULL) {
-        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(t_eval_obj, NPY_DOUBLE, 0, 0) failed");
+        PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(t_eval_obj_in, NPY_DOUBLE, 0, 0) failed");
         goto fail;
     }
     t_eval_ptr = (double *) PyArray_DATA(t_eval_array);
     nt_eval = PyArray_Size((PyObject *) t_eval_array);
 
     // initial conditions
+    y_obj = PyArray_NewCopy(y_obj, NPY_ANYORDER); // copy ensures that we do not alter y
     y_array = (PyArrayObject *) PyArray_ContiguousFromObject(y_obj, NPY_DOUBLE, 0, 0);
     if (y_array == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(y_obj, NPY_DOUBLE, 0, 0) failed");
@@ -231,6 +236,7 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     y = (double *) PyArray_DATA(y_array);
     neqn = PyArray_Size((PyObject *) y_array);
 
+    yp_obj = PyArray_NewCopy(yp_obj, NPY_ANYORDER); // copy ensures that we do not alter yp
     yp_array = (PyArrayObject *) PyArray_ContiguousFromObject(yp_obj, NPY_DOUBLE, 0, 0);
     if (yp_array == NULL) {
         PyErr_SetString(PyExc_ValueError, "PyArray_ContiguousFromObject(yp_obj, NPY_DOUBLE, 0, 0) failed");
@@ -287,16 +293,16 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
 
     // first DASSL call
     DDASSL(dassl_f, &neqn, &t, y, yp,
-        &(t_eval_ptr[1]), info, &rtol, &atol, &idid, 
-        rwork, &lrwork, iwork, &liwork, 
-        rpar, ipar);
+           &(t_eval_ptr[1]), info, &rtol, &atol, &idid, 
+           rwork, &lrwork, iwork, &liwork, 
+           rpar, ipar);
 
     // call dassl solver until t = t_eval[1] is reached
     while (t < t_eval_ptr[1]) {
         DDASSL(dassl_f, &neqn, &t, y, yp,
-            &(t_eval_ptr[1]), info, &rtol, &atol, &idid, 
-            rwork, &lrwork, iwork, &liwork, 
-            rpar, ipar);
+               &(t_eval_ptr[1]), info, &rtol, &atol, &idid, 
+               rwork, &lrwork, iwork, &liwork, 
+               rpar, ipar);
     }
 
     // store new state in solution lists
@@ -327,16 +333,16 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     // cleanup
     free(rwork);
     free(iwork);
-    Py_XDECREF(f_obj);
-    Py_XDECREF(J_obj);
-    Py_XDECREF(t_span_obj);
-    Py_XDECREF(t_eval_obj);
+    if (t_eval_obj_in == Py_None) {
+        Py_XDECREF(t_eval_obj);
+    }
     Py_XDECREF(y_obj);
     Py_XDECREF(yp_obj);
     Py_XDECREF(t_eval_array);
     Py_XDECREF(y_array);
     Py_XDECREF(yp_array);
     
+    // TODO: Return _RichRestul
     return Py_BuildValue(
         "{s:N,s:N,s:N,s:N,s:N,s:i,s:i,s:i,s:i,s:i}",
         "success", success ? Py_True : Py_False,
@@ -382,10 +388,9 @@ static PyObject* dassl(PyObject *self, PyObject *args, PyObject *kwargs)
     fail:
         free(rwork);
         free(iwork);
-        Py_XDECREF(f_obj);
-        Py_XDECREF(J_obj);
-        Py_XDECREF(t_span_obj);
-        Py_XDECREF(t_eval_obj);
+        if (t_eval_obj_in == Py_None) {
+            Py_XDECREF(t_eval_obj);
+        }
         Py_XDECREF(y_obj);
         Py_XDECREF(yp_obj);
         Py_XDECREF(t_eval_array);
