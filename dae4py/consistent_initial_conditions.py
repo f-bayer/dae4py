@@ -20,7 +20,7 @@ def consistent_initial_conditions(
     *args,
 ):
     """Compute consistent initial conditions for DAE problem."""
-    n = len(y0)
+    m = len(y0)
 
     if jac is None:
 
@@ -38,16 +38,16 @@ def consistent_initial_conditions(
             return Jy, Jyp
 
     if fixed_y0 is None:
-        free_y = np.arange(n)
+        free_y = np.arange(m)
     else:
-        free_y = np.setdiff1d(np.arange(n), fixed_y0)
+        free_y = np.setdiff1d(np.arange(m), fixed_y0)
 
     if fixed_yp0 is None:
-        free_yp = np.arange(n)
+        free_yp = np.arange(m)
     else:
-        free_yp = np.setdiff1d(np.arange(n), fixed_yp0)
+        free_yp = np.setdiff1d(np.arange(m), fixed_yp0)
 
-    if len(free_y) + len(free_yp) < n:
+    if len(free_y) + len(free_yp) < m:
         raise ValueError(f"Too many components fixed, cannot solve the problem.")
 
     if not (isinstance(rtol, float) and rtol > 0):
@@ -64,20 +64,20 @@ def consistent_initial_conditions(
 
     y0 = np.asarray(y0, dtype=float).reshape(-1)
     yp0 = np.asarray(yp0, dtype=float).reshape(-1)
-    f = F(t0, y0, yp0, *args)
+    F0 = F(t0, y0, yp0, *args)
     Jy, Jyp = jac(t0, y0, yp0)
 
-    scale_f = atol + np.abs(f) * rtol
+    scale_f = atol + np.abs(F0) * rtol
     for _ in range(newton_maxiter):
         for _ in range(chord_iter):
-            dy, dyp = solve_underdetermined_system(f, Jy, Jyp, free_y, free_yp)
+            dy, dyp = solve_underdetermined_system(F0, Jy, Jyp, free_y, free_yp)
             y0 += dy
             yp0 += dyp
 
-            f = F(t0, y0, yp0, *args)
-            error = norm(f / scale_f)
+            F0 = F(t0, y0, yp0, *args)
+            error = norm(F0 / scale_f)
             if error < safety:
-                return y0, yp0, f
+                return y0, yp0, F0
 
         Jy, Jyp = jac(t0, y0, yp0)
 
@@ -92,23 +92,23 @@ def qr_rank(A):
     return rank, Q, R, p
 
 
-def solve_underdetermined_system(f, Jy, Jyp, free_y, free_yp):
+def solve_underdetermined_system(F0, Jy, Jyp, free_y, free_yp):
     """Solve the underdetermined system
-        0 = f + Jy @ Delta_y + Jyp @ Delta_yp
+        0 = F0 + Jy @ Delta_y + Jyp @ Delta_yp
     A solution is obtained with as many components as possible of
     (transformed) Delta_y and Delta_yp set to zero.
     """
-    n = len(f)
-    Delta_y = np.zeros(n)
-    Delta_yp = np.zeros(n)
+    m = len(F0)
+    Delta_y = np.zeros(m)
+    Delta_yp = np.zeros(m)
 
     # handel special cases first
-    fixed = (n - len(free_y)) + (n - len(free_yp))
+    fixed = (m - len(free_y)) + (m - len(free_yp))
 
     if len(free_y) == 0:
         # solve 0 = f + Jyp @ Delta_yp (ODE case)
         rank, Q, R, p = qr_rank(Jyp)
-        rankdef = n - rank
+        rankdef = m - rank
         if rankdef > 0:
             if rankdef <= fixed:
                 raise ValueError(
@@ -116,7 +116,7 @@ def solve_underdetermined_system(f, Jy, Jyp, free_y, free_yp):
                 )
             else:
                 raise ValueError("Index greater than one.")
-        d = -Q.T @ f
+        d = -Q.T @ F0
         Delta_yp_ = np.zeros_like(Delta_yp)
         Delta_yp_[p] = solve_triangular(R, d)
         Delta_yp[free_yp] = Delta_yp_
@@ -125,7 +125,7 @@ def solve_underdetermined_system(f, Jy, Jyp, free_y, free_yp):
     if len(free_yp) == 0:
         # solve 0 = f + Jy @ Delta_y (pure algebraic case)
         rank, Q, R, p = qr_rank(Jy)
-        rankdef = n - rank
+        rankdef = m - rank
         if rankdef > 0:
             if rankdef <= fixed:
                 raise ValueError(
@@ -133,7 +133,7 @@ def solve_underdetermined_system(f, Jy, Jyp, free_y, free_yp):
                 )
             else:
                 raise ValueError("Index greater than one.")
-        d = -Q.T @ f
+        d = -Q.T @ F0
         Delta_y_ = np.zeros_like(Delta_y)
         Delta_y_[p] = solve_triangular(R, d)
         Delta_y[free_y] = Delta_y_
@@ -144,14 +144,14 @@ def solve_underdetermined_system(f, Jy, Jyp, free_y, free_yp):
     Jyp = Jyp[:, free_yp]
 
     # QR-decomposition of Fyp leads to the system
-    # [R11, R12] [w1'] + [S11, S12] [w1] = [d1]
-    # [  0,   0] [w2'] + [S21, S22] [w2] = [d2]
+    # [S11, S12] [w1] + [R11, R12] [w1'] = [d1]
+    # [S21, S22] [w2] + [  0,   0] [w2'] = [d2]
     # with S = Q.T @ Fy
     rank, Q, R, p = qr_rank(Jyp)
-    d = -Q.T @ f
-    if rank == n:
+    d = -Q.T @ F0
+    if rank == m:
         # Full rank (ODE) case:
-        # Set all free dy to zero and solve triangular system below
+        # Set all free Delta_y to zero and solve triangular system below
         Delta_y[free_y] = 0
         Delta_yp_ = np.zeros_like(Delta_yp)
         Delta_yp_[p] = solve_triangular(R, d)
@@ -160,7 +160,7 @@ def solve_underdetermined_system(f, Jy, Jyp, free_y, free_yp):
         # Rank deficient (DAE) case:
         S = Q.T @ Jy
         rankS, QS, RS, pS = qr_rank(S[rank:])
-        rankdef = n - (rank + rankS)
+        rankdef = m - (rank + rankS)
         if rankdef > 0:
             if rankdef <= fixed:
                 raise ValueError(
