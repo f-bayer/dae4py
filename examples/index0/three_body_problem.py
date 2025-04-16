@@ -54,7 +54,7 @@ y0 = np.concatenate((q0, u0))
 yp0 = rhs(t_span[0], y0)
 
 # solve the system of ODEs
-sol = solve_dae_radau(F, y0, yp0, t_span, t_eval=t_eval)
+sol = solve_dae_radau(F, y0, yp0, t_span, t_eval=t_eval, atol=1e-6, rtol=1e-6, s=5)
 
 # extract positions
 q = sol.y_eval[:, :6]
