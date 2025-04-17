@@ -86,6 +86,7 @@ def adaptive_radau_IIA(s=3):
     ax[1, 0].plot(t[1:], np.diff(t), "-k", label=f"h")
     ax[1, 0].grid()
     ax[1, 0].legend()
+    ax[1, 0].set_xscale("log")
     ax[1, 0].set_yscale("log")
 
     plt.show()

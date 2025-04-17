@@ -296,7 +296,8 @@ def solve_dae_radau(
                     continue
 
                 # stiffly accurate method
-                tn1 = tau[-1]
+                # tn1 = tau[-1] # this leads to roundoff errors
+                tn1 = tn + hn
                 yn1 = Y[-1]
                 ypn1 = Yp[-1]
 

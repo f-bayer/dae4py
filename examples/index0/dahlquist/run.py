@@ -23,6 +23,15 @@ def trajectory(s=None, tableau=None):
     y = sol.y
     yp = sol.yp
 
+    # export solution
+    np.savetxt(
+        "dahlquist.txt",
+        np.hstack([t[:, None], y, yp]),
+        header="t, y, yp",
+        delimiter=", ",
+        comments="",
+    )
+
     # visualization
     y_true, yp_true = problem.true_sol(t)
     fig, ax = plt.subplots(2)

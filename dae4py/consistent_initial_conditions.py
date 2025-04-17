@@ -87,6 +87,7 @@ def consistent_initial_conditions(
 def qr_rank(A):
     """Compute QR-decomposition with column pivoting of A and estimate the rank."""
     Q, R, p = qr(A, pivoting=True)
+    # abs(R[0, 0]) >= abs(R[i, i]) due to column pivoting
     tol = max(A.shape) * EPS * abs(R[0, 0])
     rank = np.sum(abs(np.diag(R)) > tol)
     return rank, Q, R, p

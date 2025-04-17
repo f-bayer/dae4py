@@ -46,7 +46,7 @@ def true_sol(t):
 problem = DAEProblem(
     name="Extended Prothero-Robinson problem",
     F=F,
-    t_span=(0, 5),
+    t_span=(0, 10),
     index=1,
     true_sol=true_sol,
 )
