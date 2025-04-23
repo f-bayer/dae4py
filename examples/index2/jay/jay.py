@@ -2,15 +2,12 @@ import numpy as np
 from dae4py.dae_problem import DAEProblem
 
 
-NONLINEAR_MULTIPLIER = False
-
-
-def F(t, y, yp):
+def F(t, y, yp, nonlinear_multiplier=False):
     y1, y2, la = y
     y1p, y2p, _ = yp
 
     F = np.zeros(3, dtype=y.dtype)
-    if NONLINEAR_MULTIPLIER:
+    if nonlinear_multiplier:
         F[0] = y1p - (y1 * y2**2 * la**2)
     else:
         F[0] = y1p - (y1 * y2 * la)
