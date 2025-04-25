@@ -2,7 +2,7 @@ import numpy as np
 from dae4py.dae_problem import DAEProblem
 
 
-# Problem parameters
+# problem parameters
 U_b = 6
 R0 = 1000
 Ri = 9000
@@ -11,13 +11,12 @@ alpha = 0.99
 I_S = 1e-6
 U_T = 0.026
 U_e = lambda t: 0.4 * np.sin(200 * np.pi * t)
-I_E = lambda U: I_S * (np.exp(U / U_T) - 1)
+I_E = lambda Delta_U: I_S * (np.exp(Delta_U / U_T) - 1)
 C1, C2, C3 = 1e-6 * np.arange(1, 4)
 
 # initial states
 y0 = np.zeros(5)
-y0[1] = U_b * R1 / (R1 + R2)
-y0[2] = U_b * R1 / (R1 + R2)
+y0[1] = y0[2] = U_b * R1 / (R1 + R2)
 y0[3] = U_b
 
 # initial derivatives
@@ -49,3 +48,24 @@ problem = DAEProblem(
     yp0=yp0,
     parameters={"Ue": U_e},
 )
+
+if __name__ == "__main__":
+    # the used set of consistent initial conditions
+    F0 = F(0, y0, yp0)
+    print(f"y0: {y0}")
+    print(f"yp0: {yp0}")
+    print(f"F0: {F0}")
+
+    # perturb an algebraic variable and zero initial derivatives
+    y0[4] += np.random.rand(1)[0]
+    yp0 = np.zeros_like(y0)
+    print(f"y0: {y0}")
+    print(f"yp0: {yp0}")
+
+    # compute again consistent initial conditions
+    from dae4py.consistent_initial_conditions import consistent_initial_conditions
+
+    y0, yp0, F0 = consistent_initial_conditions(F, 0, y0, yp0, fixed_y0=[3])
+    print(f"y0: {y0}")
+    print(f"yp0: {yp0}")
+    print(f"F0: {F0}")
