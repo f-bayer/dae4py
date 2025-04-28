@@ -8,7 +8,7 @@ from dae4py.radau import solve_dae_radau
 
 
 def create_grid(Lx, Ly, nx, ny):
-    """Generates grid and step sizes."""
+    """Generate grid."""
 
     # number of nodes
     Nx = nx + 1
@@ -59,7 +59,7 @@ def initial_conditions(nx, ny):
 
 
 def apply_boundary_conditions(u_red, v_red, p_red, BC):
-    """Applies Dirichlet boundary conditions to velocity fields."""
+    """Applies Dirichlet boundary conditions."""
 
     # unpack dictionary
     u_left = BC["u_left"]
@@ -348,7 +348,7 @@ if __name__ == "__main__":
     ###############################
     fig, ax = plt.subplots()
     ax.title.set_text(f"reattachment length")
-    ax.plot(Xi2j2[:, 1] / h, ui2j2[:, 1, -1], label="u_{i+1/2,1/2}")
+    ax.plot(Xi2j2[:, 1] / h, ui2j2[:, 1, -1], label="u_{i+1/2,-1/2}")
     ax.plot(Xi2j2[:, 1] / h, 0 * ui2j2[:, 1, -1])
     ax.grid()
     ax.legend()
