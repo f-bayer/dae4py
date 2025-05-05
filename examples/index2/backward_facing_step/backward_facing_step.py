@@ -323,9 +323,6 @@ if __name__ == "__main__":
             redundant_coordinates(t[i], sol_y[:, i], sol_yp[:, i], nx, ny, BC)
         )
 
-        # # get zero mean pressure
-        # pt[:, :, i] -= np.sum(pt[:, :, i], axis=(0, 1))
-
     # interpolate velocity at cell centers and cell corners
     uij = 0.5 * (u[:-1, 1:-1] + u[1:, 1:-1])
     ui2j2 = 0.5 * (u[:, :-1] + u[:, 1:])
