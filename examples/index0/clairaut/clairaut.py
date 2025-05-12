@@ -1,4 +1,5 @@
 import numpy as np
+from typing import override
 from dae4py.dae_problem import DAEProblem
 
 CASES = ["quadratic_neg", "quadratic_pos", "cubic_neg", "cubic_pos", "ln", "sqrt", "generalized"]
@@ -184,7 +185,30 @@ class ClairautDAEProblem(DAEProblem):
 
         return y, yp
     
+class ClairautYDAEProblem(ClairautDAEProblem):
+    def __init__(self, C=None):
 
+        if CASE != "cubic_pos":
+            raise ValueError('YDAE only works for case cubic_pos!')
+        
+        super().__init__(C)
+
+        self.u0 = self.y0
+        self.up0 = self.yp0
+
+    @override
+    def F(self, t, y, yp):
+        u = y ** 2
+        up = 2*y*yp
+        return super().F(t, u, up)
+    
+    @override
+    def true_sol(self, t):
+        u, up = super().true_sol(t)
+        y = np.sqrt(u)
+        yp = 0.5*up/y
+        return y, yp
+    
 """Check consistency"""
 h = 1e-4
 
