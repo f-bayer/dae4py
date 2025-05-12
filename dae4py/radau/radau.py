@@ -1,9 +1,12 @@
 import numpy as np
 from tqdm import tqdm
 from scipy._lib._util import _RichResult
+from scipy.integrate._ivp.common import EPS
 from scipy.optimize._numdiff import approx_derivative
 from scipy.linalg import lu_factor, lu_solve
 from scipy.linalg import eig, cdf2rdf
+from scipy.sparse import issparse
+from scipy.sparse.linalg import splu
 from dae4py.butcher_tableau import radau_tableau
 
 
@@ -21,6 +24,10 @@ def solve_dae_radau(
     eta=0.05,
     newton_iter_embedded=1,
     extrapolate_dense_output=True,
+    jac=None,
+    controller_deadband=(1.0, 1.2),
+    jac_recompute_rate=1e-3,
+    jac_recompute_newton_iter=2,
 ):
     """
     Solves a system of DAEs using implicit Runge-Kutta methods with variable step-sizes.
@@ -59,6 +66,23 @@ def solve_dae_radau(
     extrapolate_dense_output: boolean, defaul: True
         Use dense output function to extrapolate a new initial guess for the
         next time step.
+    jac: {callable, None}, default: None
+        Function that computes the Jacobian matrices M = dF/dy' and J = dF/dy.
+        There are two different possibilities:
+            * If callable, the Jacobians are assumed to depend on both
+              t, y and y'; it will be called as ``M, J = jac(t, y, yp)``.
+            * If None (default), the Jacobians will be approximated by
+              finite differences using scipy's ``approx_derivative`` function.
+    controller_deadband: tuple, defaul: (1.0, 1.2)
+        Range of the step-size scaling factor for which we supress step-size
+        changes in order to increase performance by not recomputing the LU
+        decompositions.
+    jac_recompute_rate: float, defaul: 1e-3
+        Worst case rate of convergence that allows to reuse the Jacobian
+        in the next step. This and the condition below have to be met.
+    jac_recompute_newton_iter: int, defaul: 2
+        Worst case number of newton iterations that allows to reuse the
+        Jacobian in the next step. This and the condition above have to be met.
 
     Returns
     -------
@@ -104,24 +128,63 @@ def solve_dae_radau(
         nfev += 1
         return np.atleast_1d(F(t, y, yp))
 
-    def jac(t, y, yp):
-        nonlocal njev
-        njev += 1
-        J = approx_derivative(lambda _y: F(t, _y, yp), y)
-        M = approx_derivative(lambda _yp: F(t, y, _yp), y)
-        return M, J
+    sparse_jac = False
+    if jac is None:
 
-    def factor_lu(A):
-        nonlocal nlu
-        nlu += 1
-        return lu_factor(A)
+        def jac(t, y, yp):
+            nonlocal njev
+            njev += 1
+            J = approx_derivative(lambda _y: F(t, _y, yp), y)
+            M = approx_derivative(lambda _yp: F(t, y, _yp), y)
+            return M, J
 
-    def solve_lu(LU, rhs):
-        nonlocal nlgs
-        nlgs += 1
-        return lu_solve(LU, rhs)
+        M, J = jac(t0, y0, yp0)
 
-    newton_tol = 0.03 * rtol
+    else:
+        M, J = jac(t0, y0, yp0)
+        if issparse(M) or issparse(J):
+            sparse_jac = True
+
+        jac_ = jac
+
+        def jac(t, y, yp):
+            nonlocal njev
+            njev += 1
+            return jac_(t, y, yp)
+
+    if sparse_jac:
+
+        def factor_lu(A):
+            nonlocal nlu
+            nlu += 1
+            return splu(A)
+
+        def solve_lu(LU, rhs):
+            nonlocal nlgs
+            nlgs += 1
+            return LU.solve(rhs)
+
+    else:
+
+        def factor_lu(A):
+            nonlocal nlu
+            nlu += 1
+            return lu_factor(A)
+
+        def solve_lu(LU, rhs):
+            nonlocal nlgs
+            nlgs += 1
+            return lu_solve(LU, rhs)
+
+    # newton tolerance as in radau.f line 1008ff
+    EXPMI = (2 * s) / (s + 1)
+    newton_tol = max(10 * EPS / rtol, min(0.03, rtol ** (EXPMI - 1)))
+
+    # maximum number of newton iterations:
+    # - radau.f line 446 initially choses NIT=7 and subsequently updates the
+    #   value using the formula below
+    # - radaup.f line 416 choses NIT=7+(NS-3)*2
+    # - pside.f line 1887 choses KMAX = 15
     newton_max_iter = 7 + int((s - 3) * 2.5)
 
     # Butcher tableau
@@ -200,6 +263,7 @@ def solve_dae_radau(
     ypn = yp0
     hn_old = None
     error_norm_old = None
+    current_jac = True
     LU_real = None
     LU_complex = None
     with tqdm(total=100, desc="Radau IIA") as pbar:
@@ -218,11 +282,7 @@ def solve_dae_radau(
                 converged = False
                 while not converged:
                     # estimate Jacobians and compute factorizations
-                    current_jac = False
                     if LU_real is None or LU_complex is None:
-                        M, J = jac(tn, yn, ypn)
-                        current_jac = True
-
                         LU_real = factor_lu(M + hn * gamma * J)
                         LU_complex = [
                             factor_lu(M + hn * (alpha - 1j * beta) * J)
@@ -286,6 +346,8 @@ def solve_dae_radau(
                         if current_jac:
                             break
 
+                        M, J = jac(tn, yn, ypn)
+                        current_jac = True
                         LU_real = None
                         LU_complex = None
 
@@ -344,11 +406,29 @@ def solve_dae_radau(
 
                 # can the step be accepted
                 if error_norm > 1:
+                    hn *= factor
                     LU_real = None
                     LU_complex = None
-                    hn *= factor
                 else:
                     step_accepted = True
+
+            # compute new Jacobian if convergence is to slow
+            recompute_jac = (
+                k + 1 > jac_recompute_newton_iter and rate > jac_recompute_rate
+            )
+
+            # possibly do not alter step-size
+            if (
+                not recompute_jac
+                and controller_deadband[0] <= factor <= controller_deadband[1]
+            ):
+                factor = 1
+                current_jac = False
+            else:
+                M, J = jac(tn1, yn1, ypn1)
+                current_jac = True
+                LU_real = None
+                LU_complex = None
 
             # append to solution arrays
             nsteps += 1
