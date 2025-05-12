@@ -4,10 +4,6 @@ from dae4py.irk import solve_dae_IRK
 from dae4py.butcher_tableau import radau_tableau
 from clairaut import ClairautDAEProblem, C_SPAN
 
-
-
-
-
 def trajectory(C, s=None, tableau=None, axs=None):
     problem = ClairautDAEProblem(C)
     F = problem.F

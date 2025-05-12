@@ -2,7 +2,7 @@ import numpy as np
 from dae4py.dae_problem import DAEProblem
 
 CASES = ["quadratic_neg", "quadratic_pos", "cubic_neg", "ln", "sqrt"]
-CASE = CASES[3] 
+CASE = CASES[0] 
 
 
 # Modulating function and its derivative
@@ -46,8 +46,8 @@ match CASE:
             return 0.25*upper**2 - 0.25*lower**2
         
     case "cubic_neg":
-        T_SPAN = [0, 10]
-        C_SPAN = T_SPAN
+        T_SPAN = [0, 300]
+        C_SPAN = [-10, 10]
 
         def f(yp):
             return -yp**3
@@ -60,19 +60,19 @@ match CASE:
             if np.all(s <= 0):
                 return np.sqrt(-(1/3)*s)
             else:
-                raise ValueError(f"case '{CASE}': {s} not in the image of f_prime")
+                raise ValueError(f"case '{CASE}': {s} not in the image of f_prime. Adjust T_SPAN.")
 
         def f_prime_inv_int(lower, upper):
             # Integral of f_prime_inv from lower to upper.
             # Required for true singular solution.
             if np.all(lower <= 0) and np.all(upper <= 0):
-                return -2*(-(1/3)*lower)**(1.5) + 2*(-(1/3)*upper)**(1.5)
+                return 2*(-(1/3)*lower)**(1.5) - 2*(-(1/3)*upper)**(1.5)
             else:
-                raise ValueError(f"case '{CASE}': {lower} or {upper} not in the image of f_prime")
+                raise ValueError(f"case '{CASE}': {lower} or {upper} not in the image of f_prime. Adjust T_SPAN.")
             
     case "ln":
         T_SPAN = [-10, 0]
-        C_SPAN = [-1000, 1000]
+        C_SPAN = [-20000, 20000]
         def f(yp):
                 return (np.log(np.abs(yp))-1)*yp
 
@@ -91,24 +91,25 @@ match CASE:
             return np.exp(upper) - np.exp(lower)
 
     case "sqrt":
-        T_SPAN = [0.01, 10]
+        T_SPAN = [-10, 0]
+        # C_SPAN = [-300, 300]
+        C_SPAN = [-100, 100]
+
         def f(yp):
-            if np.all(yp > 0):
-                return np.sqrt(yp)
-            else:
-                raise ValueError(f"case '{CASE}': sqrt({yp}) not well defined")
+            return (2/3)* yp * np.sqrt(np.abs(yp))
 
         def f_prime(yp):
-            return np.log(yp)
+            return np.sqrt(np.abs(yp))
 
         def f_prime_inv(s):
-            # Inverse function of f_prime. Required for true singular solution
-            return np.exp(s)
+            # Inverse function of f_prime. Required for true singular solution.
+            # Positive branch.
+            return s ** 2
 
         def f_prime_inv_int(lower, upper):
             # Integral of f_prime_inv from lower to upper.
             # Required for true singular solution.
-            return np.exp(upper) - np.exp(lower)
+            return 1/3 * (upper ** 3 - lower ** 3)
 
     case _:
         raise ValueError(f"Clairaut case {CASE} unknown. Allowed cases: {CASES}")
@@ -157,3 +158,26 @@ class ClairautDAEProblem(DAEProblem):
             y = self.C*t + f(self.yp0)
 
         return y, yp
+    
+
+"""Check consistency"""
+h = 1e-4
+
+Cs = np.linspace(*C_SPAN, 100)
+fs = f(Cs)
+
+f_primes = f_prime(Cs)
+f_primes_approx = 1/(2*h)*(f(Cs + h) - f(Cs - h))
+print(f"Clairaut '{CASE}'")
+print(f"Max error f finite difference: {np.max(np.abs(f_primes - f_primes_approx))}")
+
+ts = -np.linspace(*T_SPAN, 100)
+f_prime_invs = f_prime_inv(ts)
+ts_reconstructed = f_prime(f_prime_invs)
+print(f"Max inversion error: {np.max(np.abs(ts - ts_reconstructed))}")
+
+
+f_prime_invs_approx = 1/(2*h)*(f_prime_inv_int(lower=ts[0], upper=ts[1:-1] + h) - f_prime_inv_int(lower=ts[0], upper=ts[1:-1] - h))
+print(f"Max error f_inv finite difference: {np.max(np.abs(f_prime_invs[1:-1] - f_prime_invs_approx))}")
+
+
