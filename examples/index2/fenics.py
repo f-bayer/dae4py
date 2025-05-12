@@ -1,4 +1,4 @@
-# this example requires the following packages
+# this example requires the following packages (might be incomplete)
 # - recent FEniCSx: https://fenicsproject.org/download/
 # - numpy
 # - mpi4py
@@ -33,7 +33,6 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import splu
 from scipy.integrate import solve_ivp
 
-# from scipy_dae.integrate import solve_dae, consistent_initial_conditions
 from dae4py.radau import solve_dae_radau
 
 
@@ -247,7 +246,7 @@ if __name__ == "__main__":
             extends = [1.2, 1.0]
             domain = create_rectangle_builtin([N, N], extends)
         case "channel":
-            N = 5
+            N = 10
             extends = [2.2, 0.41]
             domain = create_rectangle_builtin([5 * N, N], extends)
         case "von Karmann":
@@ -283,7 +282,7 @@ if __name__ == "__main__":
     rho = 1
     match problem:
         case "lid cavity":
-            Re = 1000
+            Re = 300
         case "channel":
             Re = 1000
         case "von Karmann":
@@ -370,7 +369,7 @@ if __name__ == "__main__":
                 x = np.clip((x - x_min) / (x_max - x_min), 0, 1)
                 return 6 * x**5 - 15 * x**4 + 10 * x**3
 
-            u0 = lambda t: smoothstep2(t)
+            u0 = lambda t: smoothstep2(t, 0, 5)
 
             def inflow_profile(x, t=0):
                 return np.stack(
@@ -520,7 +519,7 @@ if __name__ == "__main__":
         return M_factor.solve(L.array)
 
     def fun_dae(t, y, yp):
-        print(f"t: {t}")
+        # print(f"t: {t}")
         if problem == "lid cavity":
             lid_velocity.interpolate(lambda x: inflow_profile(x, t))
         if problem == "von Karmann":
@@ -562,8 +561,7 @@ if __name__ == "__main__":
         dfem_petsc.assemble_matrix(A, jacobian, bcs=bcs)
         A.assemble()
 
-        # return dolfinx_to_scipy(A), M_scipy
-        return M_scipy.toarray(), dolfinx_to_scipy(A).toarray()
+        return M_scipy, dolfinx_to_scipy(A)
 
     # initial conditions
     t0 = 0
@@ -573,13 +571,12 @@ if __name__ == "__main__":
     yp0 = wp.x.array[:]
 
     # solver setup
-    h0 = 1e-3
+    h0 = 1e-5
     atol = 1e-3
     rtol = 1e-3
-    # t1 = 10
-    t1 = 5
+    t1 = 10
     t_span = (t0, t1)
-    t_eval = np.linspace(t0, t1, num=300)
+    t_eval = np.linspace(t0, t1, num=500)
 
     # DAE solver
     jac = jac_dae
@@ -594,15 +591,16 @@ if __name__ == "__main__":
         atol=atol,
         h0=h0,
         jac=jac,
-        s=5,
+        s=3,
+        newton_iter_embedded=0,
     )
     end = time.time()
     print(f"elapsed time: {end - start}")
 
     # vtk export
     with (
-        VTKFile(domain.mesh.comm, "navier_stokes/u.pvd", "w") as file_u,
-        VTKFile(domain.mesh.comm, "navier_stokes/p.pvd", "w") as file_p,
+        VTKFile(domain.mesh.comm, "fenics/u.pvd", "w") as file_u,
+        VTKFile(domain.mesh.comm, "fenics/p.pvd", "w") as file_p,
     ):
         for ti, yi in zip(sol.t, sol.y):
             # w.vector.setArray(yi)

@@ -76,12 +76,12 @@ def apply_boundary_conditions(u_red, v_red, p_red, BC):
     if u_left is None:
         u_red[0, :] = u_red[1, :]
     else:
-        u_red[0, :] = 2 * u_left - u_red[1, :]
+        u_red[0, :] = u_left
 
     if u_right is None:
         u_red[-1, :] = u_red[-2, :]
     else:
-        u_red[-1, :] = 2 * u_right - u_red[-2, :]
+        u_red[-1, :] = u_right
 
     if u_bot is None:
         u_red[:, 0] = u_red[:, 1]
@@ -106,12 +106,12 @@ def apply_boundary_conditions(u_red, v_red, p_red, BC):
     if v_top is None:
         v_red[1:-1, -1] = v_red[1:-1, -2]
     else:
-        v_red[:, -1] = 2 * v_top - v_red[:, -2]
+        v_red[:, -1] = v_top
 
     if v_bot is None:
         v_red[1:-1, 0] = v_red[1:-1, 1]
     else:
-        v_red[:, 0] = 2 * v_bot - v_red[:, 1]
+        v_red[:, 0] = v_bot
 
 
 def redundant_coordinates(t, y, yp, nx, ny, BC):
