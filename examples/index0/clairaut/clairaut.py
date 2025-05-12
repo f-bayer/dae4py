@@ -1,8 +1,8 @@
 import numpy as np
 from dae4py.dae_problem import DAEProblem
 
-CASES = ["quadratic_neg", "quadratic_pos", "cubic_neg", "ln", "sqrt"]
-CASE = CASES[0] 
+CASES = ["quadratic_neg", "quadratic_pos", "cubic_neg", "cubic_pos", "ln", "sqrt", "generalized"]
+CASE = CASES[3] 
 
 
 # Modulating function and its derivative
@@ -67,6 +67,31 @@ match CASE:
             # Required for true singular solution.
             if np.all(lower <= 0) and np.all(upper <= 0):
                 return 2*(-(1/3)*lower)**(1.5) - 2*(-(1/3)*upper)**(1.5)
+            else:
+                raise ValueError(f"case '{CASE}': {lower} or {upper} not in the image of f_prime. Adjust T_SPAN.")
+            
+    case "cubic_pos":
+        T_SPAN = [-300, -1]
+        C_SPAN = [-10, 10]
+
+        def f(yp):
+            return 2*yp**3
+
+        def f_prime(yp):
+            return 6*yp**2
+
+        def f_prime_inv(s):
+            # Inverse function of f_prime. Required for true singular solution
+            if np.all(s >= 0):
+                return np.sqrt((1/6)*s)
+            else:
+                raise ValueError(f"case '{CASE}': {s} not in the image of f_prime. Adjust T_SPAN.")
+
+        def f_prime_inv_int(lower, upper):
+            # Integral of f_prime_inv from lower to upper.
+            # Required for true singular solution.
+            if np.all(lower >= 0) and np.all(upper >= 0):
+                return 4*((1/6)*upper)**(1.5) - 4*(1/6*lower)**(1.5)
             else:
                 raise ValueError(f"case '{CASE}': {lower} or {upper} not in the image of f_prime. Adjust T_SPAN.")
             
