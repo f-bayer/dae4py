@@ -141,7 +141,7 @@ match CASE:
         raise ValueError(f"Clairaut case {CASE} unknown. Allowed cases: {CASES}")
 
 class ClairautDAEProblem(DAEProblem):
-    def __init__(self, C=None):
+    def __init__(self, C=None, index=0):
 
         t0 = T_SPAN[0]
         self.C = C
@@ -151,8 +151,10 @@ class ClairautDAEProblem(DAEProblem):
             # Singular solution (envelope): 
             # t + f'(yp) === 0
             yp0 = np.atleast_1d(f_prime_inv(-t0))
-            index = 1
+            index = index
         else:
+            if index > 0:
+                raise ValueError('Only singular solution may have index=1')
             # General solution (line):
             # ypp === 0
             yp0 = np.atleast_1d(C)
@@ -173,7 +175,7 @@ class ClairautDAEProblem(DAEProblem):
     # implicit differential equation
     def F(self, t, y, yp):
         r = np.atleast_1d(-y + t*yp + f(yp))
-        if self.C is None:
+        if self.index > 0:
             # Append the constraint to remain on the singularity
             r = np.hstack((r, t + f_prime(yp)))
         return r

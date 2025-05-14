@@ -4,8 +4,8 @@ from dae4py.irk import solve_dae_IRK
 from dae4py.butcher_tableau import radau_tableau
 from clairaut import ClairautDAEProblem, C_SPAN
 
-def trajectory(C, s=None, tableau=None, axs=None):
-    problem = ClairautDAEProblem(C)
+def trajectory(C, index=0, s=None, tableau=None, axs=None):
+    problem = ClairautDAEProblem(C, index)
     F = problem.F
     t_span = problem.t_span
     y0 = problem.y0
@@ -65,5 +65,7 @@ if __name__ == '__main__':
         axs = trajectory(C, s=2, tableau=radau_tableau, axs=axs)
 
     # Singular solution
-    axs = trajectory(None, s=2, tableau=radau_tableau, axs=axs)
+    axs = trajectory(None, index=0, s=2, tableau=radau_tableau, axs=axs)
     plt.show()
+    axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
+    # plt.show()
