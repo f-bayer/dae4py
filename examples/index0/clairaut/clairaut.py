@@ -3,7 +3,7 @@ from typing import override
 from dae4py.dae_problem import DAEProblem
 
 CASES = ["quadratic_neg", "quadratic_pos", "cubic_neg", "cubic_pos", "ln", "sqrt", "generalized"]
-CASE = CASES[3] 
+CASE = CASES[0] 
 
 
 # Modulating function and its derivative
@@ -151,10 +151,12 @@ class ClairautDAEProblem(DAEProblem):
             # Singular solution (envelope): 
             # t + f'(yp) === 0
             yp0 = np.atleast_1d(f_prime_inv(-t0))
+            index = 1
         else:
             # General solution (line):
             # ypp === 0
             yp0 = np.atleast_1d(C)
+            index = 0
 
         y0 = t0*yp0 + f(yp0)
 
@@ -162,7 +164,7 @@ class ClairautDAEProblem(DAEProblem):
             name="Clairaut", 
             F=self.F, 
             t_span=T_SPAN, 
-            index=0, 
+            index=index, 
             y0=y0, 
             yp0=yp0, 
             true_sol=self.true_sol,
@@ -170,7 +172,12 @@ class ClairautDAEProblem(DAEProblem):
 
     # implicit differential equation
     def F(self, t, y, yp):
-        return -y + t*yp + f(yp)
+        r = np.atleast_1d(-y + t*yp + f(yp))
+        if self.C is None:
+            # Append the constraint to remain on the singularity
+            r = np.hstack((r, t + f_prime(yp)))
+        return r
+        
     
     def true_sol(self, t):
         if self.C is None:
