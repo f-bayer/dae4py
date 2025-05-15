@@ -17,6 +17,9 @@ match CASE:
 
         def f_prime(yp):
             return -2*yp
+        
+        def f_prime_prime(yp):
+            return -2
 
         def f_prime_inv(s):
             # Inverse function of f_prime. Required for true singular solution
@@ -162,6 +165,10 @@ class ClairautDAEProblem(DAEProblem):
 
         y0 = t0*yp0 + f(yp0)
 
+        if index > 0:
+            y0 = np.append(y0, 0)
+            yp0 = np.append(yp0, 0)
+
         super().__init__(
             name="Clairaut", 
             F=self.F, 
@@ -170,15 +177,55 @@ class ClairautDAEProblem(DAEProblem):
             y0=y0, 
             yp0=yp0, 
             true_sol=self.true_sol,
+            # jac=self.jac
         )
 
     # implicit differential equation
     def F(self, t, y, yp):
-        r = np.atleast_1d(-y + t*yp + f(yp))
+
         if self.index > 0:
-            # Append the constraint to remain on the singularity
-            r = np.hstack((r, t + f_prime(yp)))
+            mu = y[1, ...]
+            y = y[0, ...]
+            mup = yp[1, ...]
+            yp = yp[0, ...]
+
+            constr = t + f_prime(yp)
+            dconstr_dyp = f_prime_prime(yp)
+
+        r = np.atleast_1d(-y + t*yp + f(yp))
+
+        if self.index > 0:
+            # Use Gear's idea to append a constraint to remain on the singularity
+            r = r + dconstr_dyp * mup
+            r = np.hstack((r, constr))
+        
         return r
+    
+    # def jac(self, t, y, yp):
+    #     if self.idx > 0:
+    #         mu = y[1, ...]
+    #         y = y[0, ...]
+    #         mup = yp[1, ...]
+    #         yp = yp[0, ...]
+
+    #         drdmu = np.zeros_like(mup)
+    #         drdmup = f_prime_prime(yp)
+
+    #         dconstr_dyp = f_prime_prime(yp)
+    #         dconstr_dmu = np.zeros_like(mup)
+    #         dconstr_dmup = np.zeros_like(mup)
+
+
+    #     drdy = np.ones_like(y)
+    #     drdyp = t*np.ones_like(yp) + f_prime(yp)
+
+    #     if self.idx > 0:
+    #         drdyp = drdyp + mup*f_prime_prime_prime(yp)
+
+
+
+        
+        return drdyp, drdy
         
     
     def true_sol(self, t):

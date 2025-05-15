@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from dae4py.irk import solve_dae_IRK
+from dae4py.radau import solve_dae_radau
 from dae4py.butcher_tableau import radau_tableau
 from clairaut import ClairautDAEProblem, C_SPAN
 
 def trajectory(C, index=0, s=None, tableau=None, axs=None):
     problem = ClairautDAEProblem(C, index)
     F = problem.F
+    # jac = problem.jac
     t_span = problem.t_span
     y0 = problem.y0
     yp0 = problem.yp0
@@ -17,7 +19,7 @@ def trajectory(C, index=0, s=None, tableau=None, axs=None):
     # if s is None or tableau is None:
     #     sol = solve_dae_BDF(F, y0, yp0, t_span, h, atol=atol, rtol=rtol)
     # else:
-    sol = solve_dae_IRK(F, y0, yp0, t_span, h, tableau(s), atol=atol, rtol=rtol)
+    sol = solve_dae_radau(F, y0, yp0, t_span, atol=atol, rtol=rtol)
     t = sol.t
     y = sol.y
     yp = sol.yp
@@ -66,6 +68,6 @@ if __name__ == '__main__':
 
     # Singular solution
     axs = trajectory(None, index=0, s=2, tableau=radau_tableau, axs=axs)
-    plt.show()
-    axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
     # plt.show()
+    axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
+    plt.show()
