@@ -221,11 +221,7 @@ class ClairautDAEProblem(DAEProblem):
 
     #     if self.idx > 0:
     #         drdyp = drdyp + mup*f_prime_prime_prime(yp)
-
-
-
-        
-        return drdyp, drdy
+    #     return drdyp, drdy
         
     
     def true_sol(self, t):

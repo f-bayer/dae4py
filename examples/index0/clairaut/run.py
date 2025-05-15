@@ -19,7 +19,7 @@ def trajectory(C, index=0, s=None, tableau=None, axs=None):
     # if s is None or tableau is None:
     #     sol = solve_dae_BDF(F, y0, yp0, t_span, h, atol=atol, rtol=rtol)
     # else:
-    sol = solve_dae_radau(F, y0, yp0, t_span, atol=atol, rtol=rtol)
+    sol = solve_dae_IRK(F, y0, yp0, t_span, h, atol=atol, rtol=rtol, tableau=tableau(s))
     t = sol.t
     y = sol.y
     yp = sol.yp
@@ -68,6 +68,6 @@ if __name__ == '__main__':
 
     # Singular solution
     axs = trajectory(None, index=0, s=2, tableau=radau_tableau, axs=axs)
-    # plt.show()
-    axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
     plt.show()
+    # axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
+    # plt.show()
