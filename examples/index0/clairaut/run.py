@@ -70,6 +70,6 @@ if __name__ == '__main__':
         axs = trajectory(C, s=2, tableau=radau_tableau, axs=axs)
 
     # Singular solution
-    # axs = trajectory(None, index=0, s=2, tableau=radau_tableau, axs=axs)
+    axs = trajectory(None, index=0, s=2, tableau=radau_tableau, axs=axs)
     axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
     plt.show()

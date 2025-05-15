@@ -3,7 +3,7 @@ from typing import override
 from dae4py.dae_problem import DAEProblem
 
 CASES = ["quadratic_neg", "quadratic_pos", "cubic_neg", "cubic_pos", "ln", "sqrt", "generalized"]
-CASE = CASES[0] 
+CASE = CASES[1] 
 
 
 # Modulating function and its derivative
@@ -48,6 +48,9 @@ match CASE:
             # Integral of f_prime_inv from lower to upper.
             # Required for true singular solution
             return 0.25*upper**2 - 0.25*lower**2
+        
+        def f_prime_prime(yp):
+            return 2*np.ones_like(yp)
         
     case "cubic_neg":
         T_SPAN = [0, 300]
