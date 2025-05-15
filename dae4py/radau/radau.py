@@ -135,7 +135,7 @@ def solve_dae_radau(
             nonlocal njev
             njev += 1
             J = approx_derivative(lambda _y: F(t, _y, yp), y)
-            M = approx_derivative(lambda _yp: F(t, y, _yp), y)
+            M = approx_derivative(lambda _yp: F(t, y, _yp), yp)
             return M, J
 
         M, J = jac(t0, y0, yp0)
