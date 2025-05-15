@@ -228,7 +228,7 @@ class ClairautDAEProblem(DAEProblem):
         if self.C is None:
             # Singular solution (envelope)
             yp = f_prime_inv(-t)
-            y = self.y0 + f_prime_inv_int(lower=-t, upper=-self.t_span[0])
+            y = self.y0[0] + f_prime_inv_int(lower=-t, upper=-self.t_span[0])
 
         else:
             # General solution (straight lines)

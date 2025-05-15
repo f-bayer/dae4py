@@ -48,6 +48,9 @@ def trajectory(C, index=0, s=None, tableau=None, axs=None):
         col_true='r'
         col_int = 'k'
         width=1
+
+    if len(y.shape) > 1:
+        y = y[:,0]
     
     axs[0].plot(t, y, "-", label=f"y", color=col_int, linewidth=width)
     axs[0].plot(t, y_true, "--", label=f"y true", linewidth=width, color=col_true)
@@ -67,7 +70,6 @@ if __name__ == '__main__':
         axs = trajectory(C, s=2, tableau=radau_tableau, axs=axs)
 
     # Singular solution
-    axs = trajectory(None, index=0, s=2, tableau=radau_tableau, axs=axs)
+    # axs = trajectory(None, index=0, s=2, tableau=radau_tableau, axs=axs)
+    axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
     plt.show()
-    # axs = trajectory(None, index=1, s=2, tableau=radau_tableau, axs=axs)
-    # plt.show()
